@@ -20,20 +20,27 @@
 
 # Use make -f Makefile.gcc PREFIX=i686-w64-mingw32-
 # for cross compilation
-CC ?= $(PREFIX)gcc
-AR ?= $(PREFIX)ar
+CC = $(PREFIX)gcc
+AR = $(PREFIX)ar
 E=.exe
 
 CFLAGS+=$(CPPFLAGS) -g --std=gnu89 -D_WIN32_WINNT=0x0501 -I$(S)/src/ares/config_win32
 LINKFLAGS=-lm
 
 CARES_OBJS += src/ares/windows_port.o
+WIN_SRCS=$(wildcard src/win/*.c)
+WIN_OBJS=$(WIN_SRCS:.c=.o)
 
-uv.a: src/uv-win.o src/uv-common.o src/uv-eio.o src/eio/eio.o $(CARES_OBJS)
+RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE # Need _GNU_SOURCE for strdup?
+RUNNER_LINKFLAGS=$(LINKFLAGS)
+RUNNER_LIBS=-lws2_32
+RUNNER_SRC=test/runner-win.c
+
+uv.a: $(WIN_OBJS) src/uv-common.o src/uv-eio.o src/eio/eio.o $(CARES_OBJS)
 	@$(call EE, ar: $@)
 	$(Q)$(AR) rcs uv.a $^
 
-src/uv-win.o: src/uv-win.c include/uv.h include/uv-win.h
+src/win/%.o: src/win/%.c src/win/internal.h
 	@$(call EE, compile: $@)
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
@@ -42,7 +49,6 @@ src/uv-common.o: src/uv-common.c include/uv.h include/uv-win.h
 	$(Q)$(CC) $(CFLAGS) -c $< -o $@
 
 EIO_CPPFLAGS += $(CPPFLAGS)
-EIO_CPPFLAGS += -DEIO_CONFIG_H=\"$(EIO_CONFIG)\"
 EIO_CPPFLAGS += -DEIO_STACKSIZE=65536
 EIO_CPPFLAGS += -D_GNU_SOURCE
 
@@ -52,5 +58,14 @@ src/eio/eio.o: src/eio/eio.c
 
 src/uv-eio.o: src/uv-eio.c
 	@$(call EE, compile: $@)
-	$(Q)$(CC) $(CPPFLAGS) -I$(S)src/eio/ $(CFLAGS) -c $< -o $@
+	$(Q)$(CC) $(CPPFLAGS) -I$(S)/src/eio/ $(CFLAGS) -c $< -o $@
 
+clean-platform:
+	-rm -f src/ares/*.o
+	-rm -f src/eio/*.o
+	-rm -f src/win/*.o
+
+distclean-platform:
+	-rm -f src/ares/*.o
+	-rm -f src/eio/*.o
+	-rm -f src/win/*.o

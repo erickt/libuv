@@ -18,10 +18,10 @@
 # FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
 # IN THE SOFTWARE.
 
-CC ?= $(PREFIX)gcc
-AR ?= $(PREFIX)ar
+CC = $(PREFIX)gcc
+AR = $(PREFIX)ar
 E=
-CSTDFLAG=--std=c89 -pedantic
+CSTDFLAG=--std=c89 -pedantic -Wall -Wextra -Wno-unused-parameter
 CFLAGS+=-g
 CPPFLAGS += -I$(S)/src/ev
 LINKFLAGS=-lm
@@ -32,7 +32,7 @@ CPPFLAGS += -D_FILE_OFFSET_BITS=64
 ifeq (SunOS,$(uname_S))
 EV_CONFIG=config_sunos.h
 EIO_CONFIG=config_sunos.h
-CPPFLAGS += -I$(S)/src/ares/config_sunos
+CPPFLAGS += -I$(S)/src/ares/config_sunos -D__EXTENSIONS__ -D_XOPEN_SOURCE=500
 LINKFLAGS+=-lsocket -lnsl
 UV_OS_FILE=uv-sunos.c
 endif
@@ -65,6 +65,8 @@ endif
 ifneq (,$(findstring CYGWIN,$(uname_S)))
 EV_CONFIG=config_cygwin.h
 EIO_CONFIG=config_cygwin.h
+# We drop the --std=c89, it hides CLOCK_MONOTONIC on cygwin
+CSTDFLAG = -D_GNU_SOURCE
 CPPFLAGS += -I$(S)/src/ares/config_cygwin
 LINKFLAGS+=
 UV_OS_FILE=uv-cygwin.c
@@ -72,8 +74,14 @@ endif
 
 # Need _GNU_SOURCE for strdup?
 RUNNER_CFLAGS=$(CFLAGS) -D_GNU_SOURCE
+RUNNER_LINKFLAGS=$(LINKFLAGS)
 
-RUNNER_LINKFLAGS=$(LINKFLAGS) -pthread
+ifeq (SunOS,$(uname_S))
+RUNNER_LINKFLAGS += -pthreads
+else
+RUNNER_LINKFLAGS += -pthread
+endif
+
 RUNNER_LIBS=
 RUNNER_SRC=test/runner-unix.c
 
@@ -100,7 +108,7 @@ src/ev/ev.o: src/ev/ev.c
 
 EIO_CPPFLAGS += $(CPPFLAGS)
 EIO_CPPFLAGS += -DEIO_CONFIG_H=\"$(EIO_CONFIG)\"
-EIO_CPPFLAGS += -DEIO_STACKSIZE=65536
+EIO_CPPFLAGS += -DEIO_STACKSIZE=262144
 EIO_CPPFLAGS += -D_GNU_SOURCE
 
 src/eio/eio.o: src/eio/eio.c

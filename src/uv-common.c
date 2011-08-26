@@ -29,6 +29,7 @@
 /* use inet_pton from c-ares if necessary */
 #include "ares_config.h"
 #include "ares/inet_net_pton.h"
+#include "ares/inet_ntop.h"
 
 /* list used for ares task handles */
 static uv_ares_task_t* uv_ares_handles_ = NULL;
@@ -39,6 +40,14 @@ static uv_counters_t counters;
 
 uv_counters_t* uv_counters() {
   return &counters;
+}
+
+
+uv_buf_t uv_buf_init(char* base, size_t len) {
+  uv_buf_t buf;
+  buf.base = base;
+  buf.len = len;
+  return buf;
 }
 
 
@@ -75,6 +84,7 @@ const char* uv_err_name(uv_err_t err) {
     case UV_ENOTCONN: return "ENOTCONN";
     case UV_ENOTSOCK: return "ENOTSOCK";
     case UV_ENOTSUP: return "ENOTSUP";
+    case UV_EPIPE: return "EPIPE";
     case UV_EPROTO: return "EPROTO";
     case UV_EPROTONOSUPPORT: return "EPROTONOSUPPORT";
     case UV_EPROTOTYPE: return "EPROTOTYPE";
@@ -109,6 +119,18 @@ struct sockaddr_in6 uv_ip6_addr(const char* ip, int port) {
   ares_inet_pton(AF_INET6, ip, &addr.sin6_addr);
 
   return addr;
+}
+
+
+int uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size) {
+  const char* d = ares_inet_ntop(AF_INET, &src->sin_addr, dst, size);
+  return d != dst;
+}
+
+
+int uv_ip6_name(struct sockaddr_in6* src, char* dst, size_t size) {
+  const char* d = ares_inet_ntop(AF_INET6, &src->sin6_addr, dst, size);
+  return d != dst;
 }
 
 
