@@ -77,7 +77,7 @@ out:
 
 
 int uv_tcp_bind(uv_tcp_t* tcp, struct sockaddr_in* addr) {
-  if (addr->sin_family != AF_INET) {
+  if (handle->type != UV_TCP || addr->sin_family != AF_INET) {
     uv_err_new(tcp->loop, EFAULT);
     return -1;
   }
@@ -90,7 +90,7 @@ int uv_tcp_bind(uv_tcp_t* tcp, struct sockaddr_in* addr) {
 
 
 int uv_tcp_bind6(uv_tcp_t* tcp, struct sockaddr_in6* addr) {
-  if (addr->sin6_family != AF_INET6) {
+  if (handle->type != UV_TCP || addr->sin6_family != AF_INET6) {
     uv_err_new(tcp->loop, EFAULT);
     return -1;
   }
