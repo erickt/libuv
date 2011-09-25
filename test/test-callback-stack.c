@@ -174,7 +174,11 @@ static void connect_cb(uv_connect_t* req, int status) {
 
 
 TEST_IMPL(callback_stack) {
-  struct sockaddr_in addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  struct sockaddr_in addr;
+  int r;
+
+  r = uv_ip4_addr("127.0.0.1", TEST_PORT, &addr);
+  ASSERT(r == 1);
 
   if (uv_tcp_init(uv_default_loop(), &client)) {
     FATAL("uv_tcp_init failed");

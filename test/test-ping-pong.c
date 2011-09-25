@@ -147,8 +147,11 @@ static void pinger_on_connect(uv_connect_t *req, int status) {
 /* same ping-pong test, but using IPv6 connection */
 static void tcp_pinger_v6_new() {
   int r;
-  struct sockaddr_in6 server_addr = uv_ip6_addr("::1", TEST_PORT);
+  struct sockaddr_in6 server_addr;
   pinger_t *pinger;
+
+  r = uv_ip6_addr("::1", TEST_PORT, &server_addr);
+  ASSERT(r == 1);
 
   pinger = (pinger_t*)malloc(sizeof(*pinger));
   pinger->state = 0;
@@ -172,8 +175,11 @@ static void tcp_pinger_v6_new() {
 
 static void tcp_pinger_new() {
   int r;
-  struct sockaddr_in server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  struct sockaddr_in server_addr;
   pinger_t *pinger;
+
+  r = uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr);
+  ASSERT(r == 1);
 
   pinger = (pinger_t*)malloc(sizeof(*pinger));
   pinger->state = 0;

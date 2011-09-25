@@ -92,10 +92,12 @@ void connection_fail(uv_connect_cb connect_cb) {
   struct sockaddr_in client_addr, server_addr;
   int r;
 
-  client_addr = uv_ip4_addr("0.0.0.0", 0);
+  r = uv_ip4_addr("0.0.0.0", 0, &client_addr);
+  ASSERT(r == 1);
 
   /* There should be no servers listening on this port. */
-  server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  r = uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr);
+  ASSERT(r == 1);
 
   /* Try to connec to the server and do NUM_PINGS ping-pongs. */
   r = uv_tcp_init(uv_default_loop(), &tcp);

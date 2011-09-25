@@ -155,7 +155,8 @@ static int do_packet_storm(int n_senders, int n_receivers) {
     r = uv_udp_init(loop, handle);
     ASSERT(r == 0);
 
-    addr = uv_ip4_addr("0.0.0.0", BASE_PORT + i);
+    r = uv_ip4_addr("0.0.0.0", BASE_PORT + i, &addr);
+    ASSERT(r == 1);
 
     r = uv_udp_bind(handle, addr, 0);
     ASSERT(r == 0);
@@ -179,7 +180,8 @@ static int do_packet_storm(int n_senders, int n_receivers) {
     req = malloc(sizeof(*req) + sizeof(*ss));
 
     ss = (void*)(req + 1);
-    ss->addr = uv_ip4_addr("127.0.0.1", BASE_PORT + (i % n_receivers));
+    r = uv_ip4_addr("127.0.0.1", BASE_PORT + (i % n_receivers), &ss->addr);
+    ASSERT(r == 1);
 
     r = uv_udp_send(req, handle, bufs, ARRAY_SIZE(bufs), ss->addr, send_cb);
     ASSERT(r == 0);

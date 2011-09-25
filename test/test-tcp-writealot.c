@@ -164,10 +164,13 @@ static void connect_cb(uv_connect_t* req, int status) {
 
 
 TEST_IMPL(tcp_writealot) {
-  struct sockaddr_in addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  struct sockaddr_in addr;
   uv_tcp_t* client = (uv_tcp_t*)malloc(sizeof *client);
   uv_connect_t* connect_req = malloc(sizeof(uv_connect_t));
   int r;
+
+  r = uv_ip4_addr("127.0.0.1", TEST_PORT, &addr);
+  ASSERT(r == 1);
 
   ASSERT(client != NULL);
   ASSERT(connect_req != NULL);

@@ -1048,9 +1048,15 @@ int uv_fs_event_init(uv_loop_t* loop, uv_fs_event_t* handle,
 
 /* Utility */
 
-/* Convert string ip addresses to binary structures */
-struct sockaddr_in uv_ip4_addr(const char* ip, int port);
-struct sockaddr_in6 uv_ip6_addr(const char* ip, int port);
+/*
+ * Convert string ip addresses to binary structures
+ *
+ * Returns:
+ *  1 on success, 0 if the address was not parseable, or -1 if a system error
+ *  occurred.
+ */
+int uv_ip4_addr(const char* ip, int port, struct sockaddr_in*);
+int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6*);
 
 /* Convert binary addresses to strings */
 int uv_ip4_name(struct sockaddr_in* src, char* dst, size_t size);

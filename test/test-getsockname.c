@@ -79,9 +79,12 @@ static void after_read(uv_stream_t* handle, ssize_t nread, uv_buf_t buf) {
 static void check_sockname(struct sockaddr* addr, const char* compare_ip,
   int compare_port, const char* context) {
   struct sockaddr_in check_addr = *(struct sockaddr_in*) addr;
-  struct sockaddr_in compare_addr = uv_ip4_addr(compare_ip, compare_port);
+  struct sockaddr_in compare_addr;
   char check_ip[17];
   int r;
+
+  r = uv_ip4_addr(compare_ip, compare_port, &compare_addr);
+  ASSERT(r == 1);
 
   /* Both adresses should be ipv4 */
   ASSERT(check_addr.sin_family == AF_INET);
@@ -166,10 +169,13 @@ static void on_connect(uv_connect_t* req, int status) {
 
 
 static int tcp_listener() {
-  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", server_port);
+  struct sockaddr_in addr;
   struct sockaddr sockname, peername;
   int namelen;
   int r;
+
+  r = uv_ip4_addr("0.0.0.0", server_port, &addr);
+  ASSERT(r == 1);
 
   r = uv_tcp_init(loop, &tcpServer);
   if (r) {
@@ -207,9 +213,12 @@ static int tcp_listener() {
 
 
 static void tcp_connector() {
-  struct sockaddr_in server_addr = uv_ip4_addr("127.0.0.1", server_port);
+  struct sockaddr_in server_addr;
   struct sockaddr sockname;
   int r, namelen;
+
+  r = uv_ip4_addr("127.0.0.1", server_port, &server_addr);
+  ASSERT(r == 1);
 
   r = uv_tcp_init(loop, &tcp);
   tcp.data = &connect_req;
@@ -262,10 +271,13 @@ static void udp_send(uv_udp_send_t* req, int status) {
 
 
 static int udp_listener() {
-  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", server_port);
+  struct sockaddr_in addr;
   struct sockaddr sockname;
   int namelen;
   int r;
+
+  r = uv_ip4_addr("0.0.0.0", server_port, &addr);
+  ASSERT(r == 1);
 
   r = uv_udp_init(loop, &udpServer);
   if (r) {
@@ -302,7 +314,8 @@ static void udp_sender(void) {
   ASSERT(!r);
 
   buf = uv_buf_init("PING", 4);
-  server_addr = uv_ip4_addr("127.0.0.1", server_port);
+  r = uv_ip4_addr("127.0.0.1", server_port, &server_addr);
+  ASSERT(r == 1);
 
   r = uv_udp_send(&send_req, &udp, &buf, 1, server_addr, udp_send);
   ASSERT(!r);

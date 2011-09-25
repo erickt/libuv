@@ -178,9 +178,15 @@ static void pinger_connect_cb(uv_connect_t* req, int status) {
 
 static void pinger_new() {
   int r;
-  struct sockaddr_in client_addr = uv_ip4_addr("0.0.0.0", 0);
-  struct sockaddr_in server_addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
+  struct sockaddr_in client_addr;
+  struct sockaddr_in server_addr;
   pinger_t *pinger;
+
+  r = uv_ip4_addr("0.0.0.0", 0, &client_addr);
+  ASSERT(r == 1);
+
+  r = uv_ip4_addr("127.0.0.1", TEST_PORT, &server_addr);
+  ASSERT(r == 1);
 
   pinger = (pinger_t*)malloc(sizeof(*pinger));
   pinger->state = 0;

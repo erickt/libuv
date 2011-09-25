@@ -177,8 +177,14 @@ static void on_server_close(uv_handle_t* handle) {
 
 
 static int tcp4_echo_start(int port) {
-  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", port);
+  struct sockaddr_in addr;
   int r;
+
+  r = uv_ip4_addr("0.0.0.0", port, &addr);
+  if (r != 1) {
+    fprintf(stderr, "uv_ip4_addr error\n");
+    return 1;
+  }
 
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;
@@ -210,8 +216,14 @@ static int tcp4_echo_start(int port) {
 
 
 static int tcp6_echo_start(int port) {
-  struct sockaddr_in6 addr6 = uv_ip6_addr("::1", port);
+  struct sockaddr_in6 addr6;
   int r;
+
+  r = uv_ip6_addr("::1", port, &addr6);
+  if (r != 1) {
+    fprintf(stderr, "uv_ip6_addr error\n");
+    return 1;
+  }
 
   server = (uv_handle_t*)&tcpServer;
   serverType = TCP;

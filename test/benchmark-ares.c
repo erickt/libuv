@@ -59,9 +59,12 @@ static void aresbynamecallback( void *arg,
 static void prep_tcploopback()
 {
   /* for test, use echo server - TCP port TEST_PORT on loopback */
-  struct sockaddr_in test_server = uv_ip4_addr("127.0.0.1", 0);
+  struct sockaddr_in test_server;
   int rc = 0;
   optmask = 0;
+
+  rc = uv_ip4_addr("127.0.0.1", 0, &test_server);
+  ASSERT(rc == 1);
 
   optmask = ARES_OPT_SERVERS | ARES_OPT_TCP_PORT | ARES_OPT_FLAGS;
   options.servers = &test_server.sin_addr;

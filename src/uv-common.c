@@ -95,29 +95,22 @@ const char* uv_err_name(uv_err_t err) {
 }
 
 
-struct sockaddr_in uv_ip4_addr(const char* ip, int port) {
-  struct sockaddr_in addr;
+int uv_ip4_addr(const char* ip, int port, struct sockaddr_in* addr) {
+  assert(addr);
+  memset(addr, 0, sizeof(struct sockaddr_in));
 
-  memset(&addr, 0, sizeof(struct sockaddr_in));
-
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(port);
-  addr.sin_addr.s_addr = inet_addr(ip);
-
-  return addr;
+  addr->sin_family = AF_INET;
+  addr->sin_port = htons(port);
+  return ares_inet_pton(AF_INET, ip, &addr->sin_addr);
 }
 
 
-struct sockaddr_in6 uv_ip6_addr(const char* ip, int port) {
-  struct sockaddr_in6 addr;
-
-  memset(&addr, 0, sizeof(struct sockaddr_in6));
-
-  addr.sin6_family = AF_INET6;
-  addr.sin6_port = htons(port);
-  ares_inet_pton(AF_INET6, ip, &addr.sin6_addr);
-
-  return addr;
+int uv_ip6_addr(const char* ip, int port, struct sockaddr_in6* addr) {
+  assert(addr);
+  memset(addr, 0, sizeof(struct sockaddr_in6));
+  addr->sin6_family = AF_INET6;
+  addr->sin6_port = htons(port);
+  return ares_inet_pton(AF_INET6, ip, &addr->sin6_addr);
 }
 
 

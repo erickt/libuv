@@ -289,8 +289,15 @@ static void on_server_close(uv_handle_t* handle) {
 
 
 static int dns_start(int port) {
-  struct sockaddr_in addr = uv_ip4_addr("0.0.0.0", port);
+  struct sockaddr_in addr;
   int r;
+
+  r = uv_ip4_addr("0.0.0.0", port, &addr);
+  if (r != 1) {
+    /* TODO: Error codes */
+    fprintf(stderr, "uv_ip4_addr error\n");
+    return 1;
+  }
 
   r = uv_tcp_init(loop, &server);
   if (r) {

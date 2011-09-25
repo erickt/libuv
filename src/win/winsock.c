@@ -93,8 +93,14 @@ void uv_winsock_init() {
   }
 
   /* Set implicit binding address used by connectEx */
-  uv_addr_ip4_any_ = uv_ip4_addr("0.0.0.0", 0);
-  uv_addr_ip6_any_ = uv_ip6_addr("::", 0);
+  errorno = uv_ip4_addr("0.0.0.0", 0, &uv_addr_ip4_any_);
+  if (errorno != 0) {
+    uv_fatal_error(errorno, "uv_ip4_addr");
+  }
+  errorno = uv_ip6_addr("::", 0, &uv_addr_ip6_any_);
+  if (errorno != 0) {
+    uv_fatal_error(errorno, "uv_ip6_addr");
+  }
 
   /* Retrieve the needed winsock extension function pointers. */
   dummy = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
