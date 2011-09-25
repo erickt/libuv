@@ -191,10 +191,10 @@ static int uv__bind(uv_loop_t* loop, uv_tcp_t* handle, int domain,
 }
 
 
-int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
+int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in* addr) {
   uv_loop_t* loop = handle->loop;
 
-  if (addr.sin_family != AF_INET) {
+  if (addr->sin_family != AF_INET) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
@@ -202,15 +202,15 @@ int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in addr) {
   return uv__bind(loop,
                   handle,
                   AF_INET,
-                  (struct sockaddr*)&addr,
+                  (struct sockaddr*)addr,
                   sizeof(struct sockaddr_in));
 }
 
 
-int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
+int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6* addr) {
   uv_loop_t* loop = handle->loop;
 
-  if (addr.sin6_family != AF_INET6) {
+  if (addr->sin6_family != AF_INET6) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
@@ -220,7 +220,7 @@ int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6 addr) {
     return uv__bind(loop,
                     handle,
                     AF_INET6,
-                    (struct sockaddr*)&addr,
+                    (struct sockaddr*)addr,
                     sizeof(struct sockaddr_in6));
 
   } else {
@@ -366,7 +366,7 @@ int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb) {
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND) &&
-      uv_tcp_bind(handle, uv_addr_ip4_any_) < 0)
+      uv_tcp_bind(handle, &uv_addr_ip4_any_) < 0)
     return -1;
 
   if (listen(handle->socket, backlog) == SOCKET_ERROR) {
@@ -471,7 +471,7 @@ int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
 
 
 int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
-    struct sockaddr_in address, uv_connect_cb cb) {
+    struct sockaddr_in* address, uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int addrsize = sizeof(struct sockaddr_in);
   BOOL success;
@@ -482,13 +482,13 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
     return -1;
   }
 
-  if (address.sin_family != AF_INET) {
+  if (address->sin_family != AF_INET) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND) &&
-      uv_tcp_bind(handle, uv_addr_ip4_any_) < 0)
+      uv_tcp_bind(handle, &uv_addr_ip4_any_) < 0)
     return -1;
 
   uv_req_init(loop, (uv_req_t*) req);
@@ -498,7 +498,7 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
   memset(&req->overlapped, 0, sizeof(req->overlapped));
 
   success = pConnectEx(handle->socket,
-                       (struct sockaddr*) &address,
+                       (struct sockaddr*)address,
                        addrsize,
                        NULL,
                        0,
@@ -522,7 +522,7 @@ int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
 
 
 int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
-    struct sockaddr_in6 address, uv_connect_cb cb) {
+    struct sockaddr_in6* address, uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int addrsize = sizeof(struct sockaddr_in6);
   BOOL success;
@@ -538,13 +538,13 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
     return -1;
   }
 
-  if (address.sin6_family != AF_INET6) {
+  if (address->sin6_family != AF_INET6) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND) &&
-      uv_tcp_bind6(handle, uv_addr_ip6_any_) < 0)
+      uv_tcp_bind6(handle, &uv_addr_ip6_any_) < 0)
     return -1;
 
   uv_req_init(loop, (uv_req_t*) req);
@@ -554,7 +554,7 @@ int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
   memset(&req->overlapped, 0, sizeof(req->overlapped));
 
   success = pConnectEx6(handle->socket,
-                       (struct sockaddr*) &address,
+                       (struct sockaddr*)address,
                        addrsize,
                        NULL,
                        0,

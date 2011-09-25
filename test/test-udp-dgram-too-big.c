@@ -72,7 +72,7 @@ TEST_IMPL(udp_dgram_too_big) {
   r = uv_ip4_addr("127.0.0.1", TEST_PORT, &addr);
   ASSERT(r == 1);
 
-  r = uv_udp_send(&req_, &handle_, &buf, 1, addr, send_cb);
+  r = uv_udp_send(&req_, &handle_, &buf, 1, &addr, send_cb);
   ASSERT(r == 0);
 
   ASSERT(close_cb_called == 0);

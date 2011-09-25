@@ -443,20 +443,20 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
 }
 
 
-int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags) {
+int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in* addr, unsigned flags) {
   return uv__udp_bind(handle,
                       AF_INET,
-                      (struct sockaddr*)&addr,
-                      sizeof addr,
+                      (struct sockaddr*)addr,
+                      sizeof(struct sockaddr_in),
                       flags);
 }
 
 
-int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags) {
+int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6* addr, unsigned flags) {
   return uv__udp_bind(handle,
                       AF_INET6,
-                      (struct sockaddr*)&addr,
-                      sizeof addr,
+                      (struct sockaddr*)addr,
+                      sizeof(struct sockaddr_in6),
                       flags);
 }
 
@@ -496,14 +496,14 @@ int uv_udp_send(uv_udp_send_t* req,
                 uv_udp_t* handle,
                 uv_buf_t bufs[],
                 int bufcnt,
-                struct sockaddr_in addr,
+                struct sockaddr_in* addr,
                 uv_udp_send_cb send_cb) {
   return uv__udp_send(req,
                       handle,
                       bufs,
                       bufcnt,
-                      (struct sockaddr*)&addr,
-                      sizeof addr,
+                      (struct sockaddr*)addr,
+                      sizeof(struct sockaddr_in),
                       send_cb);
 }
 
@@ -512,14 +512,14 @@ int uv_udp_send6(uv_udp_send_t* req,
                  uv_udp_t* handle,
                  uv_buf_t bufs[],
                  int bufcnt,
-                 struct sockaddr_in6 addr,
+                 struct sockaddr_in6* addr,
                  uv_udp_send_cb send_cb) {
   return uv__udp_send(req,
                       handle,
                       bufs,
                       bufcnt,
-                      (struct sockaddr*)&addr,
-                      sizeof addr,
+                      (struct sockaddr*)addr,
+                      sizeof(struct sockaddr_in6),
                       send_cb);
 }
 

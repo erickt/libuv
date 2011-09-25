@@ -76,28 +76,28 @@ out:
 }
 
 
-int uv_tcp_bind(uv_tcp_t* tcp, struct sockaddr_in addr) {
-  if (addr.sin_family != AF_INET) {
+int uv_tcp_bind(uv_tcp_t* tcp, struct sockaddr_in* addr) {
+  if (addr->sin_family != AF_INET) {
     uv_err_new(tcp->loop, EFAULT);
     return -1;
   }
 
   return uv__tcp_bind(tcp,
                       AF_INET,
-                      (struct sockaddr*)&addr,
+                      (struct sockaddr*)addr,
                       sizeof(struct sockaddr_in));
 }
 
 
-int uv_tcp_bind6(uv_tcp_t* tcp, struct sockaddr_in6 addr) {
-  if (addr.sin6_family != AF_INET6) {
+int uv_tcp_bind6(uv_tcp_t* tcp, struct sockaddr_in6* addr) {
+  if (addr->sin6_family != AF_INET6) {
     uv_err_new(tcp->loop, EFAULT);
     return -1;
   }
 
   return uv__tcp_bind(tcp,
                       AF_INET6,
-                      (struct sockaddr*)&addr,
+                      (struct sockaddr*)addr,
                       sizeof(struct sockaddr_in6));
 }
 
@@ -218,7 +218,7 @@ int uv_tcp_listen(uv_tcp_t* tcp, int backlog, uv_connection_cb cb) {
 
 int uv_tcp_connect(uv_connect_t* req,
                    uv_tcp_t* handle,
-                   struct sockaddr_in address,
+                   struct sockaddr_in* address,
                    uv_connect_cb cb) {
   int saved_errno;
   int status;
@@ -231,15 +231,15 @@ int uv_tcp_connect(uv_connect_t* req,
     goto out;
   }
 
-  if (address.sin_family != AF_INET) {
+  if (address->sin_family != AF_INET) {
     uv_err_new(handle->loop, EINVAL);
     goto out;
   }
 
   status = uv__connect(req,
                        (uv_stream_t*)handle,
-                       (struct sockaddr*)&address,
-                       sizeof address,
+                       (struct sockaddr*)address,
+                       sizeof(struct sockaddr_in),
                        cb);
 
 out:
@@ -250,7 +250,7 @@ out:
 
 int uv_tcp_connect6(uv_connect_t* req,
                     uv_tcp_t* handle,
-                    struct sockaddr_in6 address,
+                    struct sockaddr_in6* address,
                     uv_connect_cb cb) {
   int saved_errno;
   int status;
@@ -263,15 +263,15 @@ int uv_tcp_connect6(uv_connect_t* req,
     goto out;
   }
 
-  if (address.sin6_family != AF_INET6) {
+  if (address->sin6_family != AF_INET6) {
     uv_err_new(handle->loop, EINVAL);
     goto out;
   }
 
   status = uv__connect(req,
                        (uv_stream_t*)handle,
-                       (struct sockaddr*)&address,
-                       sizeof address,
+                       (struct sockaddr*)address,
+                       sizeof(struct sockaddr_in6),
                        cb);
 
 out:

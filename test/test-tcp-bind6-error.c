@@ -44,12 +44,12 @@ TEST_IMPL(tcp_bind6_error_addrinuse) {
 
   r = uv_tcp_init(uv_default_loop(), &server1);
   ASSERT(r == 0);
-  r = uv_tcp_bind6(&server1, addr);
+  r = uv_tcp_bind6(&server1, &addr);
   ASSERT(r == 0);
 
   r = uv_tcp_init(uv_default_loop(), &server2);
   ASSERT(r == 0);
-  r = uv_tcp_bind6(&server2, addr);
+  r = uv_tcp_bind6(&server2, &addr);
   ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*)&server1, 128, NULL);
@@ -80,7 +80,7 @@ TEST_IMPL(tcp_bind6_error_addrnotavail) {
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
-  r = uv_tcp_bind6(&server, addr);
+  r = uv_tcp_bind6(&server, &addr);
   ASSERT(r == -1);
   ASSERT(uv_last_error(uv_default_loop()).code == UV_EADDRNOTAVAIL);
 
@@ -104,7 +104,7 @@ TEST_IMPL(tcp_bind6_error_fault) {
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
-  r = uv_tcp_bind6(&server, *garbage_addr);
+  r = uv_tcp_bind6(&server, garbage_addr);
   ASSERT(r == -1);
 
   ASSERT(uv_last_error(uv_default_loop()).code == UV_EFAULT);
@@ -134,9 +134,9 @@ TEST_IMPL(tcp_bind6_error_inval) {
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
-  r = uv_tcp_bind6(&server, addr1);
+  r = uv_tcp_bind6(&server, &addr1);
   ASSERT(r == 0);
-  r = uv_tcp_bind6(&server, addr2);
+  r = uv_tcp_bind6(&server, &addr2);
   ASSERT(r == -1);
 
   ASSERT(uv_last_error(uv_default_loop()).code == UV_EINVAL);
@@ -161,7 +161,7 @@ TEST_IMPL(tcp_bind6_localhost_ok) {
 
   r = uv_tcp_init(uv_default_loop(), &server);
   ASSERT(r == 0);
-  r = uv_tcp_bind6(&server, addr);
+  r = uv_tcp_bind6(&server, &addr);
   ASSERT(r == 0);
 
   return 0;

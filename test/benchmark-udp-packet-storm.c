@@ -75,7 +75,8 @@ static void send_cb(uv_udp_send_t* req, int status) {
 
   ss = req->data;
 
-  r = uv_udp_send(req, req->handle, bufs, ARRAY_SIZE(bufs), ss->addr, send_cb);
+  r = uv_udp_send(req, req->handle, bufs, ARRAY_SIZE(bufs), &ss->addr,
+      send_cb);
   ASSERT(r == 0);
 
   req->data = ss;
@@ -158,7 +159,7 @@ static int do_packet_storm(int n_senders, int n_receivers) {
     r = uv_ip4_addr("0.0.0.0", BASE_PORT + i, &addr);
     ASSERT(r == 1);
 
-    r = uv_udp_bind(handle, addr, 0);
+    r = uv_udp_bind(handle, &addr, 0);
     ASSERT(r == 0);
 
     r = uv_udp_recv_start(handle, alloc_cb, recv_cb);
@@ -183,7 +184,7 @@ static int do_packet_storm(int n_senders, int n_receivers) {
     r = uv_ip4_addr("127.0.0.1", BASE_PORT + (i % n_receivers), &ss->addr);
     ASSERT(r == 1);
 
-    r = uv_udp_send(req, handle, bufs, ARRAY_SIZE(bufs), ss->addr, send_cb);
+    r = uv_udp_send(req, handle, bufs, ARRAY_SIZE(bufs), &ss->addr, send_cb);
     ASSERT(r == 0);
 
     req->data = ss;

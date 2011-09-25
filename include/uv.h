@@ -427,8 +427,8 @@ struct uv_tcp_s {
 
 int uv_tcp_init(uv_loop_t*, uv_tcp_t* handle);
 
-int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in);
-int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6);
+int uv_tcp_bind(uv_tcp_t* handle, struct sockaddr_in*);
+int uv_tcp_bind6(uv_tcp_t* handle, struct sockaddr_in6*);
 int uv_tcp_getsockname(uv_tcp_t* handle, struct sockaddr* name, int* namelen);
 int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name, int* namelen);
 
@@ -439,9 +439,9 @@ int uv_tcp_getpeername(uv_tcp_t* handle, struct sockaddr* name, int* namelen);
  * will be made when the connection is estabished.
  */
 int uv_tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
-    struct sockaddr_in address, uv_connect_cb cb);
+    struct sockaddr_in* address, uv_connect_cb cb);
 int uv_tcp_connect6(uv_connect_t* req, uv_tcp_t* handle,
-    struct sockaddr_in6 address, uv_connect_cb cb);
+    struct sockaddr_in6* address, uv_connect_cb cb);
 
 /* uv_connect_t is a subclass of uv_req_t */
 struct uv_connect_s {
@@ -520,7 +520,7 @@ int uv_udp_init(uv_loop_t*, uv_udp_t* handle);
  * Returns:
  *  0 on success, -1 on error.
  */
-int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags);
+int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in* addr, unsigned flags);
 
 /*
  * Bind to a IPv6 address and port.
@@ -533,7 +533,7 @@ int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr, unsigned flags);
  * Returns:
  *  0 on success, -1 on error.
  */
-int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr, unsigned flags);
+int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6* addr, unsigned flags);
 int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name, int* namelen);
 
 /*
@@ -553,7 +553,7 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name, int* namelen);
  *  0 on success, -1 on error.
  */
 int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr_in addr, uv_udp_send_cb send_cb);
+    int bufcnt, struct sockaddr_in* addr, uv_udp_send_cb send_cb);
 
 /*
  * Send data. If the socket has not previously been bound with `uv_udp_bind6`,
@@ -571,7 +571,7 @@ int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
  *  0 on success, -1 on error.
  */
 int uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr_in6 addr, uv_udp_send_cb send_cb);
+    int bufcnt, struct sockaddr_in6* addr, uv_udp_send_cb send_cb);
 
 /*
  * Send data. If the socket has not previously been bound with `uv_udp_bind`

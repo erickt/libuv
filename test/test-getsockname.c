@@ -183,7 +183,7 @@ static int tcp_listener() {
     return 1;
   }
 
-  r = uv_tcp_bind(&tcpServer, addr);
+  r = uv_tcp_bind(&tcpServer, &addr);
   if (r) {
     fprintf(stderr, "Bind error\n");
     return 1;
@@ -224,7 +224,7 @@ static void tcp_connector() {
   tcp.data = &connect_req;
   ASSERT(!r);
 
-  r = uv_tcp_connect(&connect_req, &tcp, server_addr, on_connect);
+  r = uv_tcp_connect(&connect_req, &tcp, &server_addr, on_connect);
   ASSERT(!r);
 
   /* Fetch the actual port used by the connecting socket. */
@@ -285,7 +285,7 @@ static int udp_listener() {
     return 1;
   }
 
-  r = uv_udp_bind(&udpServer, addr, 0);
+  r = uv_udp_bind(&udpServer, &addr, 0);
   if (r) {
     fprintf(stderr, "Bind error\n");
     return 1;
@@ -317,7 +317,7 @@ static void udp_sender(void) {
   r = uv_ip4_addr("127.0.0.1", server_port, &server_addr);
   ASSERT(r == 1);
 
-  r = uv_udp_send(&send_req, &udp, &buf, 1, server_addr, udp_send);
+  r = uv_udp_send(&send_req, &udp, &buf, 1, &server_addr, udp_send);
   ASSERT(!r);
 }
 

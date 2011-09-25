@@ -193,28 +193,28 @@ static int uv__bind(uv_udp_t* handle, int domain, struct sockaddr* addr,
 }
 
 
-int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in addr,
+int uv_udp_bind(uv_udp_t* handle, struct sockaddr_in* addr,
     unsigned int flags) {
   uv_loop_t* loop = handle->loop;
 
-  if (addr.sin_family != AF_INET) {
+  if (addr->sin_family != AF_INET) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
 
   return uv__bind(handle,
                   AF_INET,
-                  (struct sockaddr*) &addr,
+                  (struct sockaddr*)addr,
                   sizeof(struct sockaddr_in),
                   flags);
 }
 
 
-int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr,
+int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6* addr,
     unsigned int flags) {
   uv_loop_t* loop = handle->loop;
 
-  if (addr.sin6_family != AF_INET6) {
+  if (addr->sin6_family != AF_INET6) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
@@ -223,7 +223,7 @@ int uv_udp_bind6(uv_udp_t* handle, struct sockaddr_in6 addr,
     handle->flags |= UV_HANDLE_IPV6;
     return uv__bind(handle,
                     AF_INET6,
-                    (struct sockaddr*) &addr,
+                    (struct sockaddr*)addr,
                     sizeof(struct sockaddr_in6),
                     flags);
   } else {
@@ -334,7 +334,7 @@ int uv_udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND) &&
-      uv_udp_bind(handle, uv_addr_ip4_any_, 0) < 0) {
+      uv_udp_bind(handle, &uv_addr_ip4_any_, 0) < 0) {
     return -1;
   }
 
@@ -364,7 +364,7 @@ int uv_udp_recv_stop(uv_udp_t* handle) {
 
 
 int uv_udp_connect6(uv_connect_t* req, uv_udp_t* handle,
-    struct sockaddr_in6 address, uv_connect_cb cb) {
+    struct sockaddr_in6* address, uv_connect_cb cb) {
   uv_loop_t* loop = handle->loop;
   int addrsize = sizeof(struct sockaddr_in6);
   BOOL success;
@@ -375,13 +375,13 @@ int uv_udp_connect6(uv_connect_t* req, uv_udp_t* handle,
     return -1;
   }
 
-  if (address.sin6_family != AF_INET6) {
+  if (address->sin6_family != AF_INET6) {
     uv_set_sys_error(loop, WSAEFAULT);
     return -1;
   }
 
   if (!(handle->flags & UV_HANDLE_BOUND) &&
-      uv_udp_bind6(handle, uv_addr_ip6_any_, 0) < 0)
+      uv_udp_bind6(handle, &uv_addr_ip6_any_, 0) < 0)
     return -1;
 
   uv_req_init(loop, (uv_req_t*) req);
@@ -391,7 +391,7 @@ int uv_udp_connect6(uv_connect_t* req, uv_udp_t* handle,
   memset(&req->overlapped, 0, sizeof(req->overlapped));
 
   success = pConnectEx6(handle->socket,
-                       (struct sockaddr*) &address,
+                       (struct sockaddr*)address,
                        addrsize,
                        NULL,
                        0,
@@ -453,10 +453,10 @@ static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
 
 
 int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr_in addr, uv_udp_send_cb cb) {
+    int bufcnt, struct sockaddr_in* addr, uv_udp_send_cb cb) {
 
   if (!(handle->flags & UV_HANDLE_BOUND) &&
-      uv_udp_bind(handle, uv_addr_ip4_any_, 0) < 0) {
+      uv_udp_bind(handle, &uv_addr_ip4_any_, 0) < 0) {
     return -1;
   }
 
@@ -464,17 +464,17 @@ int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
                       handle,
                       bufs,
                       bufcnt,
-                      (struct sockaddr*) &addr,
-                      sizeof addr,
+                      (struct sockaddr*)addr,
+                      sizeof(struct sockaddr_in),
                       cb);
 }
 
 
 int uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr_in6 addr, uv_udp_send_cb cb) {
+    int bufcnt, struct sockaddr_in6* addr, uv_udp_send_cb cb) {
 
   if (!(handle->flags & UV_HANDLE_BOUND) &&
-      uv_udp_bind6(handle, uv_addr_ip6_any_, 0) < 0) {
+      uv_udp_bind6(handle, &uv_addr_ip6_any_, 0) < 0) {
     return -1;
   }
 
@@ -482,8 +482,8 @@ int uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
                       handle,
                       bufs,
                       bufcnt,
-                      (struct sockaddr*) &addr,
-                      sizeof addr,
+                      (struct sockaddr*)addr,
+                      sizeof(struct sockaddr_in6),
                       cb);
 }
 

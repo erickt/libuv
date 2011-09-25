@@ -132,7 +132,7 @@ TEST_IMPL(tcp_write_error) {
   r = uv_ip4_addr("127.0.0.1", TEST_PORT, &addr);
   ASSERT(r == 1);
 
-  r = uv_tcp_bind(&tcp_server, addr);
+  r = uv_tcp_bind(&tcp_server, &addr);
   ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*)&tcp_server, 1, connection_cb);
@@ -144,7 +144,7 @@ TEST_IMPL(tcp_write_error) {
   r = uv_ip4_addr("127.0.0.1", TEST_PORT, &addr);
   ASSERT(r == 1);
 
-  r = uv_tcp_connect(&connect_req, &tcp_client, addr, connect_cb);
+  r = uv_tcp_connect(&connect_req, &tcp_client, &addr, connect_cb);
   ASSERT(r == 0);
 
   ASSERT(write_cb_called == 0);

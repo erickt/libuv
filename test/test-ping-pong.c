@@ -164,7 +164,7 @@ static void tcp_pinger_v6_new() {
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  r = uv_tcp_connect6(&pinger->connect_req, &pinger->stream.tcp, server_addr,
+  r = uv_tcp_connect6(&pinger->connect_req, &pinger->stream.tcp, &server_addr,
       pinger_on_connect);
   ASSERT(!r);
 
@@ -192,7 +192,7 @@ static void tcp_pinger_new() {
 
   /* We are never doing multiple reads/connects at a time anyway. */
   /* so these handles can be pre-initialized. */
-  r = uv_tcp_connect(&pinger->connect_req, &pinger->stream.tcp, server_addr,
+  r = uv_tcp_connect(&pinger->connect_req, &pinger->stream.tcp, &server_addr,
       pinger_on_connect);
   ASSERT(!r);
 

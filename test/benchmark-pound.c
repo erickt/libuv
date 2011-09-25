@@ -203,7 +203,8 @@ static void tcp_make_connect(conn_rec* p) {
   r = uv_ip4_addr("127.0.0.1", TEST_PORT, &addr);
   ASSERT(r == 1);
 
-  r = uv_tcp_connect(&((tcp_conn_rec*)p)->conn_req, (uv_tcp_t*)&p->stream, addr, connect_cb);
+  r = uv_tcp_connect(&((tcp_conn_rec*)p)->conn_req, (uv_tcp_t*)&p->stream,
+      &addr, connect_cb);
   if (r) {
     fprintf(stderr, "uv_tcp_connect error %s\n",
         uv_err_name(uv_last_error(loop)));

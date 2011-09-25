@@ -121,7 +121,7 @@ static void start_server() {
   ASSERT(uv_default_loop()->counters.tcp_init == 1);
   ASSERT(uv_default_loop()->counters.handle_init == 1);
 
-  r = uv_tcp_bind(server, addr);
+  r = uv_tcp_bind(server, &addr);
   ASSERT(r == 0);
 
   r = uv_listen((uv_stream_t*)server, 128, connection_cb);
@@ -180,7 +180,7 @@ static void client_connect() {
   r = uv_tcp_init(uv_default_loop(), client);
   ASSERT(r == 0);
 
-  r = uv_tcp_connect(connect_req, client, addr, connect_cb);
+  r = uv_tcp_connect(connect_req, client, &addr, connect_cb);
   ASSERT(r == 0);
 }
 
