@@ -117,6 +117,8 @@ size_t uv_count_bufs(uv_buf_t bufs[], int count);
 /*
  * TCP
  */
+int uv__tcp_connect(uv_connect_t* req, uv_tcp_t* handle,
+    struct sockaddr_in* address, uv_connect_cb cb
 int uv_tcp_listen(uv_tcp_t* handle, int backlog, uv_connection_cb cb);
 int uv_tcp_accept(uv_tcp_t* server, uv_tcp_t* client);
 int uv_tcp_read_start(uv_tcp_t* handle, uv_alloc_cb alloc_cb,
