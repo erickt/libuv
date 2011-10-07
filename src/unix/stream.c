@@ -360,32 +360,34 @@ static void uv__write(uv_stream_t* stream) {
   iov = (struct iovec*) &(req->bufs[req->write_index]);
   iovcnt = req->bufcnt - req->write_index;
 
-  /* Now do the actual writev. Note that we've been updating the pointers
-   * inside the iov each time we write. So there is no need to offset it.
-   */
-
-  if (req->send_handle) {
+  if (stream->type == UV_TCP || stream->type == UV_NAMED_PIPE) {
     struct msghdr msg;
     char scratch[64];
     struct cmsghdr *cmsg;
-    int fd_to_send = req->send_handle->fd;
 
-    assert(fd_to_send >= 0);
+    memset(&msg, 0, sizeof(msg));
+    msg.msg_iov = (struct iovec*) &(req->bufs[req->write_index]);
+    msg.msg_iovlen = req->bufcnt - req->write_index;
 
-    msg.msg_name = NULL;
-    msg.msg_namelen = 0;
-    msg.msg_iov = iov;
-    msg.msg_iovlen = iovcnt;
-    msg.msg_flags = 0;
+    /* Now do the actual writev. Note that we've been updating the pointers
+     * inside the iov each time we write. So there is no need to offset it.
+     */
 
-    msg.msg_control = (void*) scratch;
-    msg.msg_controllen = CMSG_LEN(sizeof(fd_to_send));
+    if (req->send_handle) {
+      int fd_to_send = req->send_handle->fd;
 
-    cmsg = CMSG_FIRSTHDR(&msg);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = msg.msg_controllen;
-    *(int*) CMSG_DATA(cmsg) = fd_to_send;
+      assert(stream->type == UV_NAMED_PIPE);
+      assert(fd_to_send >= 0);
+
+      msg.msg_control = (void*) scratch;
+      msg.msg_controllen = CMSG_LEN(sizeof(fd_to_send));
+
+      cmsg = CMSG_FIRSTHDR(&msg);
+      cmsg->cmsg_level = SOL_SOCKET;
+      cmsg->cmsg_type = SCM_RIGHTS;
+      cmsg->cmsg_len = msg.msg_controllen;
+      *(int*) CMSG_DATA(cmsg) = fd_to_send;
+    }
 
     do {
       n = sendmsg(stream->fd, &msg, 0);
@@ -393,11 +395,7 @@ static void uv__write(uv_stream_t* stream) {
     while (n == -1 && errno == EINTR);
   } else {
     do {
-      if (iovcnt == 1) {
-        n = write(stream->fd, iov[0].iov_base, iov[0].iov_len);
-      } else {
-        n = writev(stream->fd, iov, iovcnt);
-      }
+      n = writev(stream->fd, iov, iovcnt);
     }
     while (n == -1 && errno == EINTR);
   }
