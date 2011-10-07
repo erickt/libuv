@@ -615,7 +615,7 @@ static void uv__read(uv_stream_t* stream) {
       }
 
       /* Return if we didn't fill the buffer, there is no more data to read. */
-      if (nread < buflen) {
+      if ((size_t)nread < buflen) {
         return;
       }
     }
