@@ -365,7 +365,9 @@ static void uv__write(uv_stream_t* stream) {
     char scratch[64];
     struct cmsghdr *cmsg;
 
-    memset(&msg, 0, sizeof(msg));
+    memset(&msg, 0, sizeof(struct msghdr));
+    msg.msg_name = req->addrlen == 0 ? NULL : &req->addr;
+    msg.msg_namelen = req->addrlen;
     msg.msg_iov = (struct iovec*) &(req->bufs[req->write_index]);
     msg.msg_iovlen = req->bufcnt - req->write_index;
 
@@ -801,8 +803,14 @@ int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
 }
 
 
-int uv_write2(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
-    uv_stream_t* send_handle, uv_write_cb cb) {
+int uv__writeto(uv_write_t* req,
+                uv_stream_t* stream,
+                uv_buf_t bufs[],
+                int bufcnt,
+                struct sockaddr* addr,
+                socklen_t addrlen,
+                uv_stream_t* send_handle,
+                uv_write_cb cb) {
   int empty_queue;
 
   assert((stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
@@ -825,12 +833,16 @@ int uv_write2(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
 
   /* Initialize the req */
   uv__req_init((uv_req_t*) req);
-  req->cb = cb;
-  req->handle = stream;
-  req->error = 0;
-  req->send_handle = send_handle;
   req->type = UV_WRITE;
-  ngx_queue_init(&req->queue);
+  req->cb = cb;
+  req->send_handle = send_handle;
+  req->handle = stream;
+
+  if (addr != NULL) {
+    memcpy(&req->addr, addr, addrlen);
+  }
+
+  req->addrlen = addrlen;
 
   if (bufcnt <= UV_REQ_BUFSML_SIZE) {
     req->bufs = req->bufsml;
@@ -841,6 +853,9 @@ int uv_write2(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
 
   memcpy(req->bufs, bufs, bufcnt * sizeof(uv_buf_t));
   req->bufcnt = bufcnt;
+
+  req->error = 0;
+  ngx_queue_init(&req->queue);
 
   /*
    * fprintf(stderr, "cnt: %d bufs: %p bufsml: %p\n", bufcnt, req->bufs, req->bufsml);
@@ -871,12 +886,36 @@ int uv_write2(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
 }
 
 
+int uv_write2(uv_write_t* req,
+              uv_stream_t* stream,
+              uv_buf_t bufs[],
+              int bufcnt,
+              uv_stream_t* send_handle,
+              uv_write_cb cb) {
+  return uv__writeto(req, stream, bufs, bufcnt, NULL, 0, send_handle, cb);
+}
+
+
+int uv_writeto(uv_write_t* req,
+               uv_stream_t* stream,
+               uv_buf_t bufs[],
+               int bufcnt,
+               struct sockaddr* addr,
+               socklen_t addrlen,
+               uv_write_cb cb) {
+  return uv__writeto(req, stream, bufs, bufcnt, addr, addrlen, NULL, cb);
+}
+
+
 /* The buffers to be written must remain valid until the callback is called.
  * This is not required for the uv_buf_t array.
  */
-int uv_write(uv_write_t* req, uv_stream_t* stream, uv_buf_t bufs[], int bufcnt,
-    uv_write_cb cb) {
-  return uv_write2(req, stream, bufs, bufcnt, NULL, cb);
+int uv_write(uv_write_t* req,
+             uv_stream_t* stream,
+             uv_buf_t bufs[],
+             int bufcnt,
+             uv_write_cb cb) {
+  return uv__writeto(req, stream, bufs, bufcnt, NULL, 0, NULL, cb);
 }
 
 
