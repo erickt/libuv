@@ -496,6 +496,10 @@ static void uv__read(uv_stream_t* stream) {
   char cmsg_space[64];
   struct ev_loop* ev = stream->loop->ev;
 
+  assert((stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
+      stream->type == UV_TTY) &&
+      "uv_read (unix) does not yet support other types of streams");
+
   /* XXX: Maybe instead of having UV_READING we just test if
    * tcp->read_cb is NULL or not?
    */
