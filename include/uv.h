@@ -214,6 +214,26 @@ typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, uv_buf_t buf);
  */
 typedef void (*uv_read2_cb)(uv_pipe_t* pipe, ssize_t nread, uv_buf_t buf,
     uv_handle_type pending);
+/*
+ * Callback that is invoked when a new UDP datagram is received.
+ *
+ *  handle  stream handle.
+ *  nread   Number of bytes that have been received.
+ *          0 if there is no more data to read. You may
+ *          discard or repurpose the read buffer.
+ *          -1 if a transmission error was detected.
+ *  buf     uv_buf_t with the received data.
+ *  addr    struct sockaddr_in or struct sockaddr_in6.
+ *          Valid for the duration of the callback only.
+ *  addrlen size of the address
+ *  flags   One or more OR'ed UV_UDP_* constants.
+ *          Right now only UV_UDP_PARTIAL is used.
+ */
+typedef void (*uv_readfrom_cb)(uv_stream_t* handle,
+                               ssize_t nread,
+                               uv_buf_t buf,
+                               struct sockaddr* addr,
+                               int addrlen);
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
 typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_shutdown_t* req, int status);
@@ -347,6 +367,7 @@ uv_buf_t uv_buf_init(char* base, size_t len);
   size_t write_queue_size; \
   uv_alloc_cb alloc_cb; \
   uv_read_cb read_cb; \
+  uv_readfrom_cb readfrom_cb; \
   uv_read2_cb read2_cb; \
   /* private */ \
   UV_STREAM_PRIVATE_FIELDS

@@ -512,29 +512,31 @@ static void uv__read(uv_stream_t* stream) {
     assert(buf.base);
     assert(stream->fd >= 0);
 
-    if (stream->read_cb) {
-      do {
-        nread = read(stream->fd, buf.base, buf.len);
-      }
-      while (nread < 0 && errno == EINTR);
-    } else {
-      assert(stream->read2_cb);
-      /* read2_cb uses recvmsg */
-      msg.msg_flags = 0;
+    if (stream->type == UV_TCP || stream->type == UV_NAMED_PIPE) {
+      memset(&msg, 0, sizeof(struct msghdr));
+
       msg.msg_iov = (struct iovec*) &buf;
       msg.msg_iovlen = 1;
-      msg.msg_name = NULL;
-      msg.msg_namelen = 0;
-      /* Set up to receive a descriptor even if one isn't in the message */
-      msg.msg_controllen = 64;
-      msg.msg_control = (void *) cmsg_space;
+
+      if (stream->read2_cb) {
+        /* Set up to receive a descriptor even if one isn't in the message */
+        msg.msg_controllen = 64;
+        msg.msg_control = (void *) cmsg_space;
+      }
 
       do {
         nread = recvmsg(stream->fd, &msg, 0);
       }
       while (nread < 0 && errno == EINTR);
-    }
+    } else {
+      msg.msg_name = NULL;
+      msg.msg_namelen = 0;
 
+      do {
+        nread = read(stream->fd, buf.base, buf.len);
+      }
+      while (nread < 0 && errno == EINTR);
+    }
 
     if (nread < 0) {
       /* Error */
@@ -547,6 +549,8 @@ static void uv__read(uv_stream_t* stream) {
 
         if (stream->read_cb) {
           stream->read_cb(stream, 0, buf);
+        } else if (stream->readfrom_cb) {
+          stream->readfrom_cb(stream, 0, buf, msg.msg_name, msg.msg_namelen);
         } else {
           stream->read2_cb((uv_pipe_t*)stream, 0, buf, UV_UNKNOWN_HANDLE);
         }
@@ -558,6 +562,8 @@ static void uv__read(uv_stream_t* stream) {
 
         if (stream->read_cb) {
           stream->read_cb(stream, -1, buf);
+        } else if (stream->readfrom_cb) {
+          stream->readfrom_cb(stream, -1, buf, msg.msg_name, msg.msg_namelen);
         } else {
           stream->read2_cb((uv_pipe_t*)stream, -1, buf, UV_UNKNOWN_HANDLE);
         }
@@ -573,6 +579,8 @@ static void uv__read(uv_stream_t* stream) {
 
       if (stream->read_cb) {
         stream->read_cb(stream, -1, buf);
+      } else if (stream->readfrom_cb) {
+        stream->readfrom_cb(stream, -1, buf, msg.msg_name, msg.msg_namelen);
       } else {
         stream->read2_cb((uv_pipe_t*)stream, -1, buf, UV_UNKNOWN_HANDLE);
       }
@@ -583,6 +591,8 @@ static void uv__read(uv_stream_t* stream) {
 
       if (stream->read_cb) {
         stream->read_cb(stream, nread, buf);
+      } else if (stream->readfrom_cb) {
+        stream->readfrom_cb(stream, nread, buf, msg.msg_name, msg.msg_namelen);
       } else {
         assert(stream->read2_cb);
 
@@ -919,8 +929,11 @@ int uv_write(uv_write_t* req,
 }
 
 
-int uv__read_start_common(uv_stream_t* stream, uv_alloc_cb alloc_cb,
-    uv_read_cb read_cb, uv_read2_cb read2_cb) {
+int uv__read_start_common(uv_stream_t* stream,
+                          uv_alloc_cb alloc_cb,
+                          uv_read_cb read_cb,
+                          uv_read2_cb read2_cb,
+                          uv_readfrom_cb readfrom_cb) {
   assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
       stream->type == UV_TTY);
 
@@ -943,6 +956,7 @@ int uv__read_start_common(uv_stream_t* stream, uv_alloc_cb alloc_cb,
 
   stream->read_cb = read_cb;
   stream->read2_cb = read2_cb;
+  stream->readfrom_cb = readfrom_cb;
   stream->alloc_cb = alloc_cb;
 
   /* These should have been set by uv_tcp_init. */
@@ -955,13 +969,19 @@ int uv__read_start_common(uv_stream_t* stream, uv_alloc_cb alloc_cb,
 
 int uv_read_start(uv_stream_t* stream, uv_alloc_cb alloc_cb,
     uv_read_cb read_cb) {
-  return uv__read_start_common(stream, alloc_cb, read_cb, NULL);
+  return uv__read_start_common(stream, alloc_cb, read_cb, NULL, NULL);
+}
+
+
+int uv_readfrom_start(uv_stream_t* stream, uv_alloc_cb alloc_cb,
+    uv_readfrom_cb read_cb) {
+  return uv__read_start_common(stream, alloc_cb, NULL, NULL, read_cb);
 }
 
 
 int uv_read2_start(uv_stream_t* stream, uv_alloc_cb alloc_cb,
     uv_read2_cb read_cb) {
-  return uv__read_start_common(stream, alloc_cb, NULL, read_cb);
+  return uv__read_start_common(stream, alloc_cb, NULL, read_cb, NULL);
 }
 
 
