@@ -86,7 +86,7 @@ int uv__stream_open(uv_stream_t* stream, int fd, int flags) {
 
   stream->flags |= flags;
 
-  if (stream->type == UV_TCP) {
+  if (stream->type == UV_TCP || stream->type == UV_UDP) {
     /* Reuse the port address if applicable. */
     yes = 1;
     if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof yes) == -1) {
@@ -240,6 +240,9 @@ int uv_listen(uv_stream_t* stream, int backlog, uv_connection_cb cb) {
   switch (stream->type) {
     case UV_TCP:
       return uv_tcp_listen((uv_tcp_t*)stream, backlog, cb);
+    case UV_UDP:
+      uv__set_artificial_error(stream->loop, UV_EOPNOTSUPP);
+      return -1;
     case UV_NAMED_PIPE:
       return uv_pipe_listen((uv_pipe_t*)stream, backlog, cb);
     default:
@@ -360,7 +363,8 @@ static void uv__write(uv_stream_t* stream) {
   iov = (struct iovec*) &(req->bufs[req->write_index]);
   iovcnt = req->bufcnt - req->write_index;
 
-  if (stream->type == UV_TCP || stream->type == UV_NAMED_PIPE) {
+  if (stream->type == UV_TCP || stream->type == UV_UDP ||
+      stream->type == UV_NAMED_PIPE) {
     struct msghdr msg;
     char scratch[64];
     struct cmsghdr *cmsg;
@@ -496,8 +500,8 @@ static void uv__read(uv_stream_t* stream) {
   char cmsg_space[64];
   struct ev_loop* ev = stream->loop->ev;
 
-  assert((stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
-      stream->type == UV_TTY) &&
+  assert((stream->type == UV_TCP || stream->type == UV_UDP ||
+        stream->type == UV_NAMED_PIPE || stream->type == UV_TTY) &&
       "uv_read (unix) does not yet support other types of streams");
 
   /* XXX: Maybe instead of having UV_READING we just test if
@@ -512,7 +516,9 @@ static void uv__read(uv_stream_t* stream) {
     assert(buf.base);
     assert(stream->fd >= 0);
 
-    if (stream->type == UV_TCP || stream->type == UV_NAMED_PIPE) {
+    if (stream->type == UV_TCP ||
+        stream->type == UV_UDP ||
+        stream->type == UV_NAMED_PIPE) {
       memset(&msg, 0, sizeof(struct msghdr));
 
       msg.msg_iov = (struct iovec*) &buf;
@@ -638,7 +644,8 @@ static void uv__read(uv_stream_t* stream) {
 
 
 int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
-  assert((stream->type == UV_TCP || stream->type == UV_NAMED_PIPE) &&
+  assert((stream->type == UV_TCP || stream->type == UV_UDP ||
+        stream->type == UV_NAMED_PIPE) &&
          "uv_shutdown (unix) only supports uv_handle_t right now");
   assert(stream->fd >= 0);
 
@@ -670,8 +677,8 @@ int uv_shutdown(uv_shutdown_t* req, uv_stream_t* stream, uv_shutdown_cb cb) {
 void uv__stream_io(EV_P_ ev_io* watcher, int revents) {
   uv_stream_t* stream = watcher->data;
 
-  assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
-      stream->type == UV_TTY);
+  assert(stream->type == UV_TCP || stream->type == UV_UDP ||
+      stream->type == UV_NAMED_PIPE || stream->type == UV_TTY);
   assert(watcher == &stream->read_watcher ||
          watcher == &stream->write_watcher);
   assert(!(stream->flags & UV_CLOSING));
@@ -704,7 +711,8 @@ static void uv__stream_connect(uv_stream_t* stream) {
   uv_connect_t* req = stream->connect_req;
   socklen_t errorsize = sizeof(int);
 
-  assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE);
+  assert(stream->type == UV_TCP || stream->type == UV_UDP ||
+      stream->type == UV_NAMED_PIPE);
   assert(req);
 
   if (stream->delayed_error) {
@@ -772,7 +780,7 @@ int uv__connect(uv_connect_t* req, uv_stream_t* stream, struct sockaddr* addr,
     return -1;
   }
 
-  if (stream->type != UV_TCP) {
+  if (stream->type != UV_TCP && stream->type != UV_UDP) {
     uv__set_sys_error(stream->loop, ENOTSOCK);
     return -1;
   }
@@ -823,8 +831,8 @@ int uv__writeto(uv_write_t* req,
                 uv_write_cb cb) {
   int empty_queue;
 
-  assert((stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
-      stream->type == UV_TTY) &&
+  assert((stream->type == UV_TCP || stream->type == UV_UDP ||
+      stream->type == UV_NAMED_PIPE || stream->type == UV_TTY) &&
       "uv_write (unix) does not yet support other types of streams");
 
   if (stream->fd < 0) {
@@ -934,8 +942,10 @@ int uv__read_start_common(uv_stream_t* stream,
                           uv_read_cb read_cb,
                           uv_read2_cb read2_cb,
                           uv_readfrom_cb readfrom_cb) {
-  assert(stream->type == UV_TCP || stream->type == UV_NAMED_PIPE ||
-      stream->type == UV_TTY);
+  assert(stream->type == UV_TCP
+      || stream->type == UV_UDP
+      || stream->type == UV_NAMED_PIPE
+      || stream->type == UV_TTY);
 
   if (stream->flags & UV_CLOSING) {
     uv__set_sys_error(stream->loop, EINVAL);
