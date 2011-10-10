@@ -36,11 +36,11 @@
 
 static uv_udp_t client;
 static uv_udp_t server;
-static uv_udp_send_t req_;
+static uv_write_t req_;
 static uv_timer_t timeout;
 
-static int send_cb_called;
-static int recv_cb_called;
+static int write_cb_called;
+static int readfrom_cb_called;
 static int close_cb_called;
 
 
@@ -57,33 +57,35 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void send_cb(uv_udp_send_t* req, int status) {
+static void write_cb(uv_write_t* req, int status) {
   CHECK_REQ(req);
   CHECK_HANDLE(req->handle);
   ASSERT(status == 0);
-  send_cb_called++;
+  write_cb_called++;
 }
 
 
-static void ipv6_recv_fail(uv_udp_t* handle,
-                           ssize_t nread,
-                           uv_buf_t buf,
-                           struct sockaddr* addr,
-                           unsigned flags) {
+static void ipv6_readfrom_fail(uv_stream_t* handle,
+                               ssize_t nread,
+                               uv_buf_t buf,
+                               struct sockaddr* addr,
+                               size_t addrlen,
+                               unsigned flags) {
   ASSERT(0 && "this function should not have been called");
 }
 
 
-static void ipv6_recv_ok(uv_udp_t* handle,
-                         ssize_t nread,
-                         uv_buf_t buf,
-                         struct sockaddr* addr,
-                         unsigned flags) {
+static void ipv6_readfrom_ok(uv_stream_t* handle,
+                             ssize_t nread,
+                             uv_buf_t buf,
+                             struct sockaddr* addr,
+                             size_t addrlen,
+                             unsigned flags) {
   CHECK_HANDLE(handle);
   ASSERT(nread >= 0);
 
   if (nread)
-    recv_cb_called++;
+    readfrom_cb_called++;
 }
 
 
@@ -94,7 +96,7 @@ static void timeout_cb(uv_timer_t* timer, int status) {
 }
 
 
-static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
+static void do_test(uv_readfrom_cb readfrom_cb, int bind_flags) {
   struct sockaddr_in6 addr6;
   struct sockaddr_in addr;
   uv_buf_t buf;
@@ -108,7 +110,7 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   r = uv_udp_bind6(&server, addr6, bind_flags);
   ASSERT(r == 0);
 
-  r = uv_udp_recv_start(&server, alloc_cb, recv_cb);
+  r = uv_readfrom_start((uv_stream_t*)&server, alloc_cb, readfrom_cb);
   ASSERT(r == 0);
 
   r = uv_udp_init(uv_default_loop(), &client);
@@ -117,7 +119,13 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   buf = uv_buf_init("PING", 4);
   addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 
-  r = uv_udp_send(&req_, &client, &buf, 1, addr, send_cb);
+  r = uv_writeto(&req_,
+                 (uv_stream_t*)&client,
+                 &buf,
+                 1,
+                 (struct sockaddr*)&addr,
+                 sizeof(addr),
+                 write_cb);
   ASSERT(r == 0);
 
   r = uv_timer_init(uv_default_loop(), &timeout);
@@ -127,8 +135,8 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
   ASSERT(r == 0);
 
   ASSERT(close_cb_called == 0);
-  ASSERT(send_cb_called == 0);
-  ASSERT(recv_cb_called == 0);
+  ASSERT(write_cb_called == 0);
+  ASSERT(readfrom_cb_called == 0);
 
   uv_run(uv_default_loop());
 
@@ -137,20 +145,20 @@ static void do_test(uv_udp_recv_cb recv_cb, int bind_flags) {
 
 
 TEST_IMPL(udp_dual_stack) {
-  do_test(ipv6_recv_ok, 0);
+  do_test(ipv6_readfrom_ok, 0);
 
-  ASSERT(recv_cb_called == 1);
-  ASSERT(send_cb_called == 1);
+  ASSERT(readfrom_cb_called == 1);
+  ASSERT(write_cb_called == 1);
 
   return 0;
 }
 
 
 TEST_IMPL(udp_ipv6_only) {
-  do_test(ipv6_recv_fail, UV_UDP_IPV6ONLY);
+  do_test(ipv6_readfrom_fail, UV_UDP_IPV6ONLY);
 
-  ASSERT(recv_cb_called == 0);
-  ASSERT(send_cb_called == 1);
+  ASSERT(readfrom_cb_called == 0);
+  ASSERT(write_cb_called == 1);
 
   return 0;
 }

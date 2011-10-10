@@ -556,7 +556,12 @@ static void uv__read(uv_stream_t* stream) {
         if (stream->read_cb) {
           stream->read_cb(stream, 0, buf);
         } else if (stream->readfrom_cb) {
-          stream->readfrom_cb(stream, 0, buf, msg.msg_name, msg.msg_namelen);
+          stream->readfrom_cb(stream,
+                              0,
+                              buf,
+                              msg.msg_name,
+                              msg.msg_namelen,
+                              0);
         } else {
           stream->read2_cb((uv_pipe_t*)stream, 0, buf, UV_UNKNOWN_HANDLE);
         }
@@ -569,7 +574,12 @@ static void uv__read(uv_stream_t* stream) {
         if (stream->read_cb) {
           stream->read_cb(stream, -1, buf);
         } else if (stream->readfrom_cb) {
-          stream->readfrom_cb(stream, -1, buf, msg.msg_name, msg.msg_namelen);
+          stream->readfrom_cb(stream,
+                              -1,
+                              buf,
+                              msg.msg_name,
+                              msg.msg_namelen,
+                              0);
         } else {
           stream->read2_cb((uv_pipe_t*)stream, -1, buf, UV_UNKNOWN_HANDLE);
         }
@@ -586,7 +596,12 @@ static void uv__read(uv_stream_t* stream) {
       if (stream->read_cb) {
         stream->read_cb(stream, -1, buf);
       } else if (stream->readfrom_cb) {
-        stream->readfrom_cb(stream, -1, buf, msg.msg_name, msg.msg_namelen);
+        stream->readfrom_cb(stream,
+                            -1,
+                            buf,
+                            msg.msg_name,
+                            msg.msg_namelen,
+                            0);
       } else {
         stream->read2_cb((uv_pipe_t*)stream, -1, buf, UV_UNKNOWN_HANDLE);
       }
@@ -598,7 +613,18 @@ static void uv__read(uv_stream_t* stream) {
       if (stream->read_cb) {
         stream->read_cb(stream, nread, buf);
       } else if (stream->readfrom_cb) {
-        stream->readfrom_cb(stream, nread, buf, msg.msg_name, msg.msg_namelen);
+        int flags = 0;
+
+        if (msg.msg_flags & MSG_TRUNC) {
+          flags |= UV_UDP_PARTIAL;
+        }
+
+        stream->readfrom_cb(stream,
+                            nread,
+                            buf,
+                            msg.msg_name,
+                            msg.msg_namelen,
+                            flags);
       } else {
         assert(stream->read2_cb);
 
@@ -919,7 +945,7 @@ int uv_writeto(uv_write_t* req,
                uv_buf_t bufs[],
                int bufcnt,
                struct sockaddr* addr,
-               socklen_t addrlen,
+               unsigned addrlen,
                uv_write_cb cb) {
   return uv__writeto(req, stream, bufs, bufcnt, addr, addrlen, NULL, cb);
 }

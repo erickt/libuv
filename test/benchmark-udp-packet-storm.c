@@ -45,8 +45,8 @@ static uv_udp_t senders[MAX_SENDERS];
 static uv_udp_t receivers[MAX_RECEIVERS];
 static uv_buf_t bufs[5];
 
-static int send_cb_called;
-static int recv_cb_called;
+static int write_cb_called;
+static int readfrom_cb_called;
 static int close_cb_called;
 static int stopping = 0;
 
@@ -62,7 +62,7 @@ static uv_buf_t alloc_cb(uv_handle_t* handle, size_t suggested_size) {
 }
 
 
-static void send_cb(uv_udp_send_t* req, int status) {
+static void write_cb(uv_write_t* req, int status) {
   sender_state_t* ss;
   int r;
 
@@ -75,20 +75,27 @@ static void send_cb(uv_udp_send_t* req, int status) {
 
   ss = req->data;
 
-  r = uv_udp_send(req, req->handle, bufs, ARRAY_SIZE(bufs), ss->addr, send_cb);
+  r = uv_writeto(req,
+                 req->handle,
+                 bufs,
+                 ARRAY_SIZE(bufs),
+                 (struct sockaddr*)&ss->addr,
+                 sizeof(ss->addr),
+                 write_cb);
   ASSERT(r == 0);
 
   req->data = ss;
 
-  send_cb_called++;
+  write_cb_called++;
 }
 
 
-static void recv_cb(uv_udp_t* handle,
-                    ssize_t nread,
-                    uv_buf_t buf,
-                    struct sockaddr* addr,
-                    unsigned flags) {
+static void readfrom_cb(uv_stream_t* handle,
+                        ssize_t nread,
+                        uv_buf_t buf,
+                        struct sockaddr* addr,
+                        size_t addrlen,
+                        unsigned flags) {
   if (nread == 0)
     return;
 
@@ -100,7 +107,7 @@ static void recv_cb(uv_udp_t* handle,
   ASSERT(addr->sa_family == AF_INET);
   ASSERT(!memcmp(buf.base, EXPECTED, nread));
 
-  recv_cb_called++;
+  readfrom_cb_called++;
 }
 
 
@@ -126,7 +133,7 @@ static void timeout_cb(uv_timer_t* timer, int status) {
 static int do_packet_storm(int n_senders, int n_receivers) {
   uv_timer_t timeout;
   sender_state_t *ss;
-  uv_udp_send_t* req;
+  uv_write_t* req;
   uv_udp_t* handle;
   int i;
   int r;
@@ -160,7 +167,9 @@ static int do_packet_storm(int n_senders, int n_receivers) {
     r = uv_udp_bind(handle, addr, 0);
     ASSERT(r == 0);
 
-    r = uv_udp_recv_start(handle, alloc_cb, recv_cb);
+    r = uv_readfrom_start((uv_stream_t*)handle,
+                          alloc_cb,
+                          readfrom_cb);
     ASSERT(r == 0);
   }
 
@@ -181,7 +190,13 @@ static int do_packet_storm(int n_senders, int n_receivers) {
     ss = (void*)(req + 1);
     ss->addr = uv_ip4_addr("127.0.0.1", BASE_PORT + (i % n_receivers));
 
-    r = uv_udp_send(req, handle, bufs, ARRAY_SIZE(bufs), ss->addr, send_cb);
+    r = uv_writeto(req,
+                   req->handle,
+                   bufs,
+                   ARRAY_SIZE(bufs),
+                   (struct sockaddr*)&ss->addr,
+                   sizeof(ss->addr),
+                   write_cb);
     ASSERT(r == 0);
 
     req->data = ss;
@@ -192,8 +207,8 @@ static int do_packet_storm(int n_senders, int n_receivers) {
   printf("udp_packet_storm_%dv%d: %.0f/s received, %.0f/s sent\n",
          n_receivers,
          n_senders,
-         recv_cb_called / (TEST_DURATION / 1000.0),
-         send_cb_called / (TEST_DURATION / 1000.0));
+         readfrom_cb_called / (TEST_DURATION / 1000.0),
+         write_cb_called / (TEST_DURATION / 1000.0));
 
   return 0;
 }

@@ -79,7 +79,6 @@ typedef int uv_file;
   uv_buf_t* bufs;                   \
   int bufcnt;                       \
   ssize_t status;                   \
-  uv_udp_send_cb send_cb;           \
   uv_buf_t bufsml[UV_REQ_BUFSML_SIZE];  \
 
 #define UV_PRIVATE_REQ_TYPES /* empty */
@@ -110,13 +109,7 @@ typedef int uv_file;
 
 
 /* UV_UDP */
-#define UV_UDP_PRIVATE_FIELDS         \
-  uv_alloc_cb alloc_cb;               \
-  uv_udp_recv_cb recv_cb;             \
-  ev_io read_watcher;                 \
-  ev_io write_watcher;                \
-  ngx_queue_t write_queue;            \
-  ngx_queue_t write_completed_queue;  \
+#define UV_UDP_PRIVATE_FIELDS
 
 
 /* UV_NAMED_PIPE */

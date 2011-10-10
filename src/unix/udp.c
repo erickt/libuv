@@ -28,6 +28,7 @@
 #include <stdlib.h>
 
 
+#if 0
 static void uv__udp_watcher_start(uv_udp_t* handle, ev_io* w);
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_run_pending(uv_udp_t* handle);
@@ -36,7 +37,7 @@ static void uv__udp_sendmsg(uv_udp_t* handle);
 static void uv__udp_io(EV_P_ ev_io* w, int events);
 static int uv__udp_maybe_deferred_bind(uv_udp_t* handle, int domain);
 static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr* addr, socklen_t addrlen, uv_udp_send_cb send_cb);
+    int bufcnt, struct sockaddr* addr, socklen_t addrlen, uv_readfrom_cb send_cb);
 
 
 static void uv__udp_watcher_start(uv_udp_t* handle, ev_io* w) {
@@ -89,7 +90,7 @@ void uv__udp_destroy(uv_udp_t* handle) {
 
   /* Now tear down the handle. */
   handle->flags = 0;
-  handle->recv_cb = NULL;
+  handle->readfrom_cb = NULL;
   handle->alloc_cb = NULL;
   /* but _do not_ touch close_cb */
 
@@ -199,7 +200,7 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
   uv_buf_t buf;
   int flags;
 
-  assert(handle->recv_cb != NULL);
+  assert(handle->readfrom_cb != NULL);
   assert(handle->alloc_cb != NULL);
 
   do {
@@ -222,11 +223,11 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
     if (nread == -1) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         uv__set_sys_error(handle->loop, EAGAIN);
-        handle->recv_cb(handle, 0, buf, NULL, 0);
+        handle->readfrom_cb((uv_stream_t*)handle, 0, buf, NULL, 0);
       }
       else {
         uv__set_sys_error(handle->loop, errno);
-        handle->recv_cb(handle, -1, buf, NULL, 0);
+        handle->readfrom_cb((uv_stream_t*)handle, -1, buf, NULL, 0);
       }
     }
     else {
@@ -235,17 +236,17 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
       if (h.msg_flags & MSG_TRUNC)
         flags |= UV_UDP_PARTIAL;
 
-      handle->recv_cb(handle,
-                      nread,
-                      buf,
-                      (struct sockaddr*)&peer,
-                      flags);
+      handle->readfrom_cb((uv_stream_t*)handle,
+                          nread,
+                          buf,
+                          (struct sockaddr*)&peer,
+                          flags);
     }
   }
-  /* recv_cb callback may decide to pause or close the handle */
+  /* readfrom_cb callback may decide to pause or close the handle */
   while (nread != -1
       && handle->fd != -1
-      && handle->recv_cb != NULL);
+      && handle->readfrom_cb != NULL);
 }
 
 
@@ -397,7 +398,7 @@ static int uv__udp_send(uv_udp_send_t* req,
                         int bufcnt,
                         struct sockaddr* addr,
                         socklen_t addrlen,
-                        uv_udp_send_cb send_cb) {
+                        uv_writeto_cb writeto_cb) {
   if (uv__udp_maybe_deferred_bind(handle, addr->sa_family))
     return -1;
 
@@ -406,7 +407,7 @@ static int uv__udp_send(uv_udp_send_t* req,
 
   memcpy(&req->addr, addr, addrlen);
   req->addrlen = addrlen;
-  req->send_cb = send_cb;
+  req->writeto_cb = writeto_cb;
   req->handle = handle;
   req->bufcnt = bufcnt;
   req->type = UV_UDP_SEND;
@@ -531,7 +532,7 @@ int uv_udp_send(uv_udp_send_t* req,
                 uv_buf_t bufs[],
                 int bufcnt,
                 struct sockaddr_in addr,
-                uv_udp_send_cb send_cb) {
+                uv_writeto_cb writeto_cb) {
   return uv__udp_send(req,
                       handle,
                       bufs,
@@ -547,7 +548,7 @@ int uv_udp_send6(uv_udp_send_t* req,
                  uv_buf_t bufs[],
                  int bufcnt,
                  struct sockaddr_in6 addr,
-                 uv_udp_send_cb send_cb) {
+                 uv_writeto_cb writeto_cb) {
   return uv__udp_send(req,
                       handle,
                       bufs,
@@ -560,8 +561,8 @@ int uv_udp_send6(uv_udp_send_t* req,
 
 int uv_udp_recv_start(uv_udp_t* handle,
                       uv_alloc_cb alloc_cb,
-                      uv_udp_recv_cb recv_cb) {
-  if (alloc_cb == NULL || recv_cb == NULL) {
+                      uv_readfrom_cb readfrom_cb) {
+  if (alloc_cb == NULL || readfrom_cb == NULL) {
     uv__set_artificial_error(handle->loop, UV_EINVAL);
     return -1;
   }
@@ -575,7 +576,7 @@ int uv_udp_recv_start(uv_udp_t* handle,
     return -1;
 
   handle->alloc_cb = alloc_cb;
-  handle->recv_cb = recv_cb;
+  handle->readfrom_cb = readfrom_cb;
   uv__udp_watcher_start(handle, &handle->read_watcher);
 
   return 0;
@@ -585,6 +586,7 @@ int uv_udp_recv_start(uv_udp_t* handle,
 int uv_udp_recv_stop(uv_udp_t* handle) {
   uv__udp_watcher_stop(handle, &handle->read_watcher);
   handle->alloc_cb = NULL;
-  handle->recv_cb = NULL;
+  handle->readfrom_cb = NULL;
   return 0;
 }
+#endif

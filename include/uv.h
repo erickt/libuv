@@ -208,6 +208,7 @@ int64_t uv_now(uv_loop_t*);
  */
 typedef uv_buf_t (*uv_alloc_cb)(uv_handle_t* handle, size_t suggested_size);
 typedef void (*uv_read_cb)(uv_stream_t* stream, ssize_t nread, uv_buf_t buf);
+
 /*
  * Just like the uv_read_cb except that if the pending parameter is true
  * then you can use uv_accept() to pull the new handle into the process.
@@ -234,7 +235,8 @@ typedef void (*uv_readfrom_cb)(uv_stream_t* handle,
                                ssize_t nread,
                                uv_buf_t buf,
                                struct sockaddr* addr,
-                               int addrlen);
+                               size_t addrlen,
+                               unsigned flags);
 typedef void (*uv_write_cb)(uv_write_t* req, int status);
 typedef void (*uv_connect_cb)(uv_connect_t* req, int status);
 typedef void (*uv_shutdown_cb)(uv_shutdown_t* req, int status);
@@ -416,6 +418,23 @@ int uv_read_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 int uv_read_stop(uv_stream_t*);
 
 /*
+ * Send data. If the socket has not previously been bound with `uv_udp_bind`
+ * or `uv_udp_bind6`, it is bound to 0.0.0.0 (the "all interfaces" address)
+ * and a random port number.
+ *
+ * Arguments:
+ *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
+ *  alloc_cb  Callback to invoke when temporary storage is needed.
+ *  recv_cb   Callback to invoke with received data.
+ *
+ * Returns:
+ *  0 on success, -1 on error.
+ */
+int uv_readfrom_start(uv_stream_t* handle,
+                      uv_alloc_cb alloc_cb,
+                      uv_readfrom_cb readfrom_cb);
+
+/*
  * Extended read methods for receiving handles over a pipe. The pipe must be
  * initialized with ipc == 1.
  */
@@ -442,6 +461,14 @@ int uv_read2_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read2_cb read_cb);
  */
 int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
     uv_write_cb cb);
+
+int uv_writeto(uv_write_t* req,
+               uv_stream_t* handle,
+               uv_buf_t bufs[],
+               int bufcnt,
+               struct sockaddr* addr,
+               unsigned addrlen,
+               uv_write_cb cb);
 
 int uv_write2(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
     uv_stream_t* send_handle, uv_write_cb cb);
@@ -513,47 +540,27 @@ enum uv_udp_flags {
   UV_UDP_IPV6ONLY = 1,
   /*
    * Indicates message was truncated because read buffer was too small. The
-   * remainder was discarded by the OS. Used in uv_udp_recv_cb.
+   * remainder was discarded by the OS. Used in uv_readfrom_cb.
    */
   UV_UDP_PARTIAL = 2
 };
 
-/*
- * Called after a uv_udp_send() or uv_udp_send6(). status 0 indicates
- * success otherwise error.
- */
-typedef void (*uv_udp_send_cb)(uv_udp_send_t* req, int status);
-
-/*
- * Callback that is invoked when a new UDP datagram is received.
- *
- *  handle  UDP handle.
- *  nread   Number of bytes that have been received.
- *          0 if there is no more data to read. You may
- *          discard or repurpose the read buffer.
- *          -1 if a transmission error was detected.
- *  buf     uv_buf_t with the received data.
- *  addr    struct sockaddr_in or struct sockaddr_in6.
- *          Valid for the duration of the callback only.
- *  flags   One or more OR'ed UV_UDP_* constants.
- *          Right now only UV_UDP_PARTIAL is used.
- */
-typedef void (*uv_udp_recv_cb)(uv_udp_t* handle, ssize_t nread, uv_buf_t buf,
-    struct sockaddr* addr, unsigned flags);
-
 /* uv_udp_t is a subclass of uv_handle_t */
 struct uv_udp_s {
   UV_HANDLE_FIELDS
+  UV_STREAM_FIELDS
   UV_UDP_PRIVATE_FIELDS
 };
 
 /* uv_udp_send_t is a subclass of uv_req_t */
+/*
 struct uv_udp_send_s {
   UV_REQ_FIELDS
   uv_udp_t* handle;
   uv_udp_send_cb cb;
   UV_UDP_SEND_PRIVATE_FIELDS
 };
+*/
 
 /*
  * Initialize a new UDP handle. The actual socket is created lazily.
@@ -619,8 +626,10 @@ int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
  * Returns:
  *  0 on success, -1 on error.
  */
+/*
 int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
     int bufcnt, struct sockaddr_in addr, uv_udp_send_cb send_cb);
+*/
 
 /*
  * Send data. If the socket has not previously been bound with `uv_udp_bind6`,
@@ -637,8 +646,10 @@ int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
  * Returns:
  *  0 on success, -1 on error.
  */
+/*
 int uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
     int bufcnt, struct sockaddr_in6 addr, uv_udp_send_cb send_cb);
+*/
 
 /*
  * Receive data. If the socket has not previously been bound with `uv_udp_bind`
@@ -654,7 +665,7 @@ int uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
  *  0 on success, -1 on error.
  */
 int uv_udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
-    uv_udp_recv_cb recv_cb);
+    uv_readfrom_cb recv_cb);
 
 /*
  * Stop listening for incoming datagrams.

@@ -32,11 +32,11 @@
 static uv_udp_t server;
 static uv_udp_t client;
 
-static int cl_send_cb_called;
-static int cl_recv_cb_called;
+static int cl_writeto_cb_called;
+static int cl_readfrom_cb_called;
 
-static int sv_send_cb_called;
-static int sv_recv_cb_called;
+static int sv_writeto_cb_called;
+static int sv_readfrom_cb_called;
 
 static int close_cb_called;
 
@@ -57,11 +57,12 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void cl_recv_cb(uv_udp_t* handle,
-                       ssize_t nread,
-                       uv_buf_t buf,
-                       struct sockaddr* addr,
-                       unsigned flags) {
+static void cl_readfrom_cb(uv_stream_t* handle,
+                           ssize_t nread,
+                           uv_buf_t buf,
+                           struct sockaddr* addr,
+                           size_t addrlen,
+                           unsigned flags) {
   CHECK_HANDLE(handle);
   ASSERT(flags == 0);
 
@@ -71,7 +72,7 @@ static void cl_recv_cb(uv_udp_t* handle,
 
   if (nread == 0) {
     /* Returning unused buffer */
-    /* Don't count towards cl_recv_cb_called */
+    /* Don't count towards cl_readfrom_cb_called */
     ASSERT(addr == NULL);
     return;
   }
@@ -80,27 +81,27 @@ static void cl_recv_cb(uv_udp_t* handle,
   ASSERT(nread == 4);
   ASSERT(!memcmp("PONG", buf.base, nread));
 
-  cl_recv_cb_called++;
+  cl_readfrom_cb_called++;
 
   uv_close((uv_handle_t*) handle, close_cb);
 }
 
 
-static void cl_send_cb(uv_udp_send_t* req, int status) {
+static void cl_writeto_cb(uv_write_t* req, int status) {
   int r;
 
   ASSERT(req != NULL);
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
 
-  r = uv_udp_recv_start(req->handle, alloc_cb, cl_recv_cb);
+  r = uv_readfrom_start(req->handle, alloc_cb, cl_readfrom_cb);
   ASSERT(r == 0);
 
-  cl_send_cb_called++;
+  cl_writeto_cb_called++;
 }
 
 
-static void sv_send_cb(uv_udp_send_t* req, int status) {
+static void sv_writeto_cb(uv_write_t* req, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
@@ -108,16 +109,17 @@ static void sv_send_cb(uv_udp_send_t* req, int status) {
   uv_close((uv_handle_t*) req->handle, close_cb);
   free(req);
 
-  sv_send_cb_called++;
+  sv_writeto_cb_called++;
 }
 
 
-static void sv_recv_cb(uv_udp_t* handle,
-                       ssize_t nread,
-                       uv_buf_t buf,
-                       struct sockaddr* addr,
-                       unsigned flags) {
-  uv_udp_send_t* req;
+static void sv_readfrom_cb(uv_stream_t* handle,
+                           ssize_t nread,
+                           uv_buf_t buf,
+                           struct sockaddr* addr,
+                           size_t addrlen,
+                           unsigned flags) {
+  uv_write_t* req;
   int r;
 
   if (nread < 0) {
@@ -126,7 +128,7 @@ static void sv_recv_cb(uv_udp_t* handle,
 
   if (nread == 0) {
     /* Returning unused buffer */
-    /* Don't count towards sv_recv_cb_called */
+    /* Don't count towards sv_readfrom_cb_called */
     ASSERT(addr == NULL);
     return;
   }
@@ -138,11 +140,11 @@ static void sv_recv_cb(uv_udp_t* handle,
   ASSERT(nread == 4);
   ASSERT(!memcmp("PING", buf.base, nread));
 
-  /* FIXME? `uv_udp_recv_stop` does what it says: recv_cb is not called
+  /* FIXME? `uv_udp_readfrom_stop` does what it says: readfrom_cb is not called
     * anymore. That's problematic because the read buffer won't be returned
     * either... Not sure I like that but it's consistent with `uv_read_stop`.
     */
-  r = uv_udp_recv_stop(handle);
+  r = uv_read_stop((uv_stream_t*)handle);
   ASSERT(r == 0);
 
   req = malloc(sizeof *req);
@@ -150,21 +152,22 @@ static void sv_recv_cb(uv_udp_t* handle,
 
   buf = uv_buf_init("PONG", 4);
 
-  r = uv_udp_send(req,
-                  handle,
-                  &buf,
-                  1,
-                  *(struct sockaddr_in*)addr,
-                  sv_send_cb);
+  r = uv_writeto(req,
+                 (uv_stream_t*)handle,
+                 &buf,
+                 1,
+                 addr,
+                 addrlen,
+                 sv_writeto_cb);
   ASSERT(r == 0);
 
-  sv_recv_cb_called++;
+  sv_readfrom_cb_called++;
 }
 
 
-TEST_IMPL(udp_send_and_recv) {
+TEST_IMPL(udp_writeto_and_readfrom) {
   struct sockaddr_in addr;
-  uv_udp_send_t req;
+  uv_write_t req;
   uv_buf_t buf;
   int r;
 
@@ -176,7 +179,7 @@ TEST_IMPL(udp_send_and_recv) {
   r = uv_udp_bind(&server, addr, 0);
   ASSERT(r == 0);
 
-  r = uv_udp_recv_start(&server, alloc_cb, sv_recv_cb);
+  r = uv_readfrom_start((uv_stream_t*)&server, alloc_cb, sv_readfrom_cb);
   ASSERT(r == 0);
 
   addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
@@ -184,24 +187,30 @@ TEST_IMPL(udp_send_and_recv) {
   r = uv_udp_init(uv_default_loop(), &client);
   ASSERT(r == 0);
 
-  /* client sends "PING", expects "PONG" */
+  /* client writetos "PING", expects "PONG" */
   buf = uv_buf_init("PING", 4);
 
-  r = uv_udp_send(&req, &client, &buf, 1, addr, cl_send_cb);
+  r = uv_writeto(&req,
+                 (uv_stream_t*)&client,
+                 &buf,
+                 1,
+                 (struct sockaddr*)&addr,
+                 sizeof(addr),
+                 cl_writeto_cb);
   ASSERT(r == 0);
 
   ASSERT(close_cb_called == 0);
-  ASSERT(cl_send_cb_called == 0);
-  ASSERT(cl_recv_cb_called == 0);
-  ASSERT(sv_send_cb_called == 0);
-  ASSERT(sv_recv_cb_called == 0);
+  ASSERT(cl_writeto_cb_called == 0);
+  ASSERT(cl_readfrom_cb_called == 0);
+  ASSERT(sv_writeto_cb_called == 0);
+  ASSERT(sv_readfrom_cb_called == 0);
 
   uv_run(uv_default_loop());
 
-  ASSERT(cl_send_cb_called == 1);
-  ASSERT(cl_recv_cb_called == 1);
-  ASSERT(sv_send_cb_called == 1);
-  ASSERT(sv_recv_cb_called == 1);
+  ASSERT(cl_writeto_cb_called == 1);
+  ASSERT(cl_readfrom_cb_called == 1);
+  ASSERT(sv_writeto_cb_called == 1);
+  ASSERT(sv_readfrom_cb_called == 1);
   ASSERT(close_cb_called == 2);
 
   return 0;

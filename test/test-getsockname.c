@@ -39,7 +39,7 @@ static uv_udp_t udp;
 static uv_connect_t connect_req;
 static uv_tcp_t tcpServer;
 static uv_udp_t udpServer;
-static uv_udp_send_t send_req;
+static uv_write_t send_req;
 
 
 static uv_buf_t alloc(uv_handle_t* handle, size_t suggested_size) {
@@ -228,11 +228,12 @@ static void tcp_connector() {
 }
 
 
-static void udp_recv(uv_udp_t* handle,
-                     ssize_t nread,
-                     uv_buf_t buf,
-                     struct sockaddr* addr,
-                     unsigned flags) {
+static void udp_readfrom(uv_stream_t* handle,
+                         ssize_t nread,
+                         uv_buf_t buf,
+                         struct sockaddr* addr,
+                         size_t addrlen,
+                         unsigned flags) {
   struct sockaddr sockname;
   int namelen;
   int r;
@@ -256,7 +257,7 @@ static void udp_recv(uv_udp_t* handle,
 }
 
 
-static void udp_send(uv_udp_send_t* req, int status) {
+static void udp_send(uv_write_t* req, int status) {
 
 }
 
@@ -286,7 +287,7 @@ static int udp_listener() {
   check_sockname(&sockname, "0.0.0.0", server_port, "udp listener socket");
   getsocknamecount++;
 
-  r = uv_udp_recv_start(&udpServer, alloc, udp_recv);
+  r = uv_readfrom_start((uv_stream_t*)&udpServer, alloc, udp_readfrom);
   ASSERT(r == 0);
 
   return 0;
@@ -304,7 +305,13 @@ static void udp_sender(void) {
   buf = uv_buf_init("PING", 4);
   server_addr = uv_ip4_addr("127.0.0.1", server_port);
 
-  r = uv_udp_send(&send_req, &udp, &buf, 1, server_addr, udp_send);
+  r = uv_writeto((uv_stream_t*)&send_req,
+                 &udp,
+                 &buf,
+                 1,
+                 (struct sockaddr*)&server_addr,
+                 sizeof(server_addr),
+                 udp_readfrom);
   ASSERT(!r);
 }
 

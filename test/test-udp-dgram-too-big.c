@@ -33,9 +33,9 @@
   ASSERT((req) == &req_);
 
 static uv_udp_t handle_;
-static uv_udp_send_t req_;
+static uv_write_t req_;
 
-static int send_cb_called;
+static int write_cb_called;
 static int close_cb_called;
 
 
@@ -45,7 +45,7 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void send_cb(uv_udp_send_t* req, int status) {
+static void write_cb(uv_write_t* req, int status) {
   CHECK_REQ(req);
   CHECK_HANDLE(req->handle);
 
@@ -53,7 +53,7 @@ static void send_cb(uv_udp_send_t* req, int status) {
   ASSERT(uv_last_error(uv_default_loop()).code == UV_EMSGSIZE);
 
   uv_close((uv_handle_t*)req->handle, close_cb);
-  send_cb_called++;
+  write_cb_called++;
 }
 
 
@@ -71,15 +71,21 @@ TEST_IMPL(udp_dgram_too_big) {
   buf = uv_buf_init(dgram, sizeof dgram);
   addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 
-  r = uv_udp_send(&req_, &handle_, &buf, 1, addr, send_cb);
+  r = uv_writeto(&req_,
+                 (uv_stream_t*)&handle_,
+                 &buf,
+                 1,
+                 (struct sockaddr*)&addr,
+                 sizeof(addr),
+                 write_cb);
   ASSERT(r == 0);
 
   ASSERT(close_cb_called == 0);
-  ASSERT(send_cb_called == 0);
+  ASSERT(write_cb_called == 0);
 
   uv_run(uv_default_loop());
 
-  ASSERT(send_cb_called == 1);
+  ASSERT(write_cb_called == 1);
   ASSERT(close_cb_called == 1);
 
   return 0;
