@@ -32,9 +32,9 @@
 static uv_udp_t server;
 static uv_udp_t client;
 
-static int cl_recv_cb_called;
+static int cl_readfrom_cb_called;
 
-static int sv_send_cb_called;
+static int sv_writeto_cb_called;
 
 static int close_cb_called;
 
@@ -54,26 +54,27 @@ static void close_cb(uv_handle_t* handle) {
 }
 
 
-static void sv_send_cb(uv_udp_send_t* req, int status) {
+static void sv_writeto_cb(uv_write_t* req, int status) {
   ASSERT(req != NULL);
   ASSERT(status == 0);
   CHECK_HANDLE(req->handle);
 
-  sv_send_cb_called++;
+  sv_writeto_cb_called++;
 
   uv_close((uv_handle_t*) req->handle, close_cb);
 }
 
 
-static void cl_recv_cb(uv_udp_t* handle,
+static void cl_readfrom_cb(uv_stream_t* handle,
                        ssize_t nread,
                        uv_buf_t buf,
                        struct sockaddr* addr,
+                       size_t addrlen,
                        unsigned flags) {
   CHECK_HANDLE(handle);
   ASSERT(flags == 0);
 
-  cl_recv_cb_called++;
+  cl_readfrom_cb_called++;
 
   if (nread < 0) {
     ASSERT(0 && "unexpected error");
@@ -81,7 +82,7 @@ static void cl_recv_cb(uv_udp_t* handle,
 
   if (nread == 0) {
     /* Returning unused buffer */
-    /* Don't count towards cl_recv_cb_called */
+    /* Don't count towards cl_readfrom_cb_called */
     ASSERT(addr == NULL);
     return;
   }
@@ -97,7 +98,7 @@ static void cl_recv_cb(uv_udp_t* handle,
 
 TEST_IMPL(udp_multicast_join) {
   int r;
-  uv_udp_send_t req;
+  uv_write_t req;
   uv_buf_t buf;
   struct sockaddr_in addr = uv_ip4_addr("239.255.0.1", TEST_PORT);
 
@@ -115,24 +116,30 @@ TEST_IMPL(udp_multicast_join) {
   r = uv_udp_set_membership(&client, "239.255.0.1", NULL, UV_JOIN_GROUP);
   ASSERT(r == 0);
 
-  r = uv_udp_recv_start(&client, alloc_cb, cl_recv_cb);
+  r = uv_readfrom_start((uv_stream_t*)&client, alloc_cb, cl_readfrom_cb);
   ASSERT(r == 0);
 
   buf = uv_buf_init("PING", 4);
 
   /* server sends "PING" */
-  r = uv_udp_send(&req, &server, &buf, 1, addr, sv_send_cb);
+  r = uv_writeto(&req,
+                 (uv_stream_t*)&server,
+                 &buf,
+                 1,
+                 (struct sockaddr*)&addr,
+                 sizeof(addr),
+                 sv_writeto_cb);
   ASSERT(r == 0);
 
   ASSERT(close_cb_called == 0);
-  ASSERT(cl_recv_cb_called == 0);
-  ASSERT(sv_send_cb_called == 0);
+  ASSERT(cl_readfrom_cb_called == 0);
+  ASSERT(sv_writeto_cb_called == 0);
 
   /* run the loop till all events are processed */
   uv_run(uv_default_loop());
 
-  ASSERT(cl_recv_cb_called == 1);
-  ASSERT(sv_send_cb_called == 1);
+  ASSERT(cl_readfrom_cb_called == 1);
+  ASSERT(sv_writeto_cb_called == 1);
   ASSERT(close_cb_called == 2);
 
   return 0;

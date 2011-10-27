@@ -39,7 +39,7 @@ static uv_udp_t udp;
 static uv_connect_t connect_req;
 static uv_tcp_t tcpServer;
 static uv_udp_t udpServer;
-static uv_write_t send_req;
+static uv_write_t write_req;
 
 
 static uv_buf_t alloc(uv_handle_t* handle, size_t suggested_size) {
@@ -257,7 +257,7 @@ static void udp_readfrom(uv_stream_t* handle,
 }
 
 
-static void udp_send(uv_write_t* req, int status) {
+static void udp_writeto(uv_write_t* req, int status) {
 
 }
 
@@ -305,13 +305,13 @@ static void udp_sender(void) {
   buf = uv_buf_init("PING", 4);
   server_addr = uv_ip4_addr("127.0.0.1", server_port);
 
-  r = uv_writeto((uv_stream_t*)&send_req,
-                 &udp,
+  r = uv_writeto(&write_req,
+                 (uv_stream_t*)&udp,
                  &buf,
                  1,
                  (struct sockaddr*)&server_addr,
                  sizeof(server_addr),
-                 udp_readfrom);
+                 udp_writeto);
   ASSERT(!r);
 }
 

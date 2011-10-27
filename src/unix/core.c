@@ -66,7 +66,6 @@ static void uv__finish_close(uv_handle_t* handle);
 
 
 void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
-  uv_udp_t* udp;
   uv_async_t* async;
   uv_timer_t* timer;
   uv_stream_t* stream;
@@ -81,6 +80,7 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
     case UV_TTY:
     case UV_TCP:
+    case UV_UDP:
       stream = (uv_stream_t*)handle;
 
       uv_read_stop(stream);
@@ -96,14 +96,6 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
       assert(!ev_is_active(&stream->read_watcher));
       assert(!ev_is_active(&stream->write_watcher));
-      break;
-
-    case UV_UDP:
-      udp = (uv_udp_t*)handle;
-      uv__udp_watcher_stop(udp, &udp->read_watcher);
-      uv__udp_watcher_stop(udp, &udp->write_watcher);
-      uv__close(udp->fd);
-      udp->fd = -1;
       break;
 
     case UV_PREPARE:
@@ -236,18 +228,12 @@ void uv__finish_close(uv_handle_t* handle) {
 
     case UV_NAMED_PIPE:
     case UV_TCP:
+    case UV_UDP:
     case UV_TTY:
       assert(!ev_is_active(&((uv_stream_t*)handle)->read_watcher));
       assert(!ev_is_active(&((uv_stream_t*)handle)->write_watcher));
       assert(((uv_stream_t*)handle)->fd == -1);
       uv__stream_destroy((uv_stream_t*)handle);
-      break;
-
-    case UV_UDP:
-      assert(!ev_is_active(&((uv_udp_t*)handle)->read_watcher));
-      assert(!ev_is_active(&((uv_udp_t*)handle)->write_watcher));
-      assert(((uv_udp_t*)handle)->fd == -1);
-      uv__udp_destroy((uv_udp_t*)handle);
       break;
 
     case UV_PROCESS:
