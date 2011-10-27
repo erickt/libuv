@@ -166,6 +166,7 @@ static void sv_readfrom_cb(uv_stream_t* handle,
 
 
 TEST_IMPL(udp_writeto_and_readfrom) {
+  struct sockaddr_in clientaddr;
   struct sockaddr_in addr;
   uv_write_t req;
   uv_buf_t buf;
@@ -185,6 +186,13 @@ TEST_IMPL(udp_writeto_and_readfrom) {
   addr = uv_ip4_addr("127.0.0.1", TEST_PORT);
 
   r = uv_udp_init(uv_default_loop(), &client);
+  ASSERT(r == 0);
+
+  memset(&clientaddr, 0, sizeof clientaddr);
+  clientaddr.sin_family = AF_INET;
+  clientaddr.sin_addr.s_addr = INADDR_ANY;
+
+  r = uv_udp_bind(&client, clientaddr, 0);
   ASSERT(r == 0);
 
   /* client writetos "PING", expects "PONG" */

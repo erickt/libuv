@@ -36,11 +36,9 @@ static int uv__bind(uv_udp_t* handle,
   int saved_errno;
   int status;
   int yes;
-  int fd;
 
   saved_errno = errno;
   status = -1;
-  fd = -1;
 
   /* Check for bad flags. */
   if (flags & ~UV_UDP_IPV6ONLY) {
@@ -60,7 +58,12 @@ static int uv__bind(uv_udp_t* handle,
     goto out;
   }
 
-  if ((fd = uv__socket(domain, SOCK_DGRAM, 0)) == -1) {
+  if ((handle->fd = uv__socket(domain, SOCK_DGRAM, 0)) == -1) {
+    uv__set_sys_error(handle->loop, errno);
+    goto out;
+  }
+
+  if (uv__stream_open((uv_stream_t*)handle, handle->fd, UV_READABLE | UV_WRITABLE)) {
     uv__set_sys_error(handle->loop, errno);
     goto out;
   }
@@ -68,7 +71,7 @@ static int uv__bind(uv_udp_t* handle,
   if (flags & UV_UDP_IPV6ONLY) {
 #ifdef IPV6_V6ONLY
     yes = 1;
-    if (setsockopt(fd, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof yes) == -1) {
+    if (setsockopt(handle->fd, IPPROTO_IPV6, IPV6_V6ONLY, &yes, sizeof yes) == -1) {
       uv__set_sys_error(handle->loop, errno);
       goto out;
     }
@@ -78,17 +81,16 @@ static int uv__bind(uv_udp_t* handle,
 #endif
   }
 
-  if (bind(fd, addr, len) == -1) {
+  if (bind(handle->fd, addr, len) == -1) {
     uv__set_sys_error(handle->loop, errno);
     goto out;
   }
 
-  handle->fd = fd;
   status = 0;
 
 out:
   if (status)
-    uv__close(fd);
+    uv__close(handle->fd);
 
   errno = saved_errno;
   return status;
