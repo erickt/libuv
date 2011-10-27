@@ -72,15 +72,6 @@ typedef int uv_file;
 #define UV_CONNECT_PRIVATE_FIELDS \
   ngx_queue_t queue;
 
-#define UV_UDP_SEND_PRIVATE_FIELDS  \
-  ngx_queue_t queue;                \
-  struct sockaddr_storage addr;     \
-  socklen_t addrlen;                \
-  uv_buf_t* bufs;                   \
-  int bufcnt;                       \
-  ssize_t status;                   \
-  uv_buf_t bufsml[UV_REQ_BUFSML_SIZE];  \
-
 #define UV_PRIVATE_REQ_TYPES /* empty */
 
 

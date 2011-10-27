@@ -125,7 +125,6 @@ typedef enum {
   UV_WRITE,
   UV_SHUTDOWN,
   UV_WAKEUP,
-  UV_UDP_SEND,
   UV_FS,
   UV_WORK,
   UV_GETADDRINFO,
@@ -156,7 +155,6 @@ typedef struct uv_req_s uv_req_t;
 typedef struct uv_shutdown_s uv_shutdown_t;
 typedef struct uv_write_s uv_write_t;
 typedef struct uv_connect_s uv_connect_t;
-typedef struct uv_udp_send_s uv_udp_send_t;
 typedef struct uv_fs_s uv_fs_t;
 /* uv_fs_event_t is a subclass of uv_handle_t. */
 typedef struct uv_fs_event_s uv_fs_event_t;
@@ -415,6 +413,16 @@ int uv_accept(uv_stream_t* server, uv_stream_t* client);
  */
 int uv_read_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read_cb read_cb);
 
+/*
+ * Stop listening for incoming data.
+ *
+ * Arguments:
+ *  handle    stream handle. Should have been initialized with
+ *            `uv_stream_init`.
+ *
+ * Returns:
+ *  0 on success, -1 on error.
+ */
 int uv_read_stop(uv_stream_t*);
 
 /*
@@ -462,6 +470,24 @@ int uv_read2_start(uv_stream_t*, uv_alloc_cb alloc_cb, uv_read2_cb read_cb);
 int uv_write(uv_write_t* req, uv_stream_t* handle, uv_buf_t bufs[], int bufcnt,
     uv_write_cb cb);
 
+/*
+ * Send data. If the socket has not previously been bound with `uv_bind`
+ * or `uv_bind6`, it is bound to 0.0.0.0 (the "all interfaces" address)
+ * and a random port number.
+ *
+ * Arguments:
+ *  req       stream request handle. Need not be initialized.
+ *  handle    stream handle. Should have been initialized with
+ *            `uv_stream_init`.
+ *  bufs      List of buffers to send.
+ *  bufcnt    Number of buffers in `bufs`.
+ *  addr      Address of the remote peer. See `uv_ip4_addr`.
+ *  addrlen   Length of the address.
+ *  send_cb   Callback to invoke when the data has been sent out.
+ *
+ * Returns:
+ *  0 on success, -1 on error.
+ */
 int uv_writeto(uv_write_t* req,
                uv_stream_t* handle,
                uv_buf_t bufs[],
@@ -552,16 +578,6 @@ struct uv_udp_s {
   UV_UDP_PRIVATE_FIELDS
 };
 
-/* uv_udp_send_t is a subclass of uv_req_t */
-/*
-struct uv_udp_send_s {
-  UV_REQ_FIELDS
-  uv_udp_t* handle;
-  uv_udp_send_cb cb;
-  UV_UDP_SEND_PRIVATE_FIELDS
-};
-*/
-
 /*
  * Initialize a new UDP handle. The actual socket is created lazily.
  * Returns 0 on success.
@@ -609,74 +625,6 @@ int uv_udp_getsockname(uv_udp_t* handle, struct sockaddr* name, int* namelen);
  */
 int uv_udp_set_membership(uv_udp_t* handle, const char* multicast_addr,
   const char* interface_addr, uv_membership membership);
-
-/*
- * Send data. If the socket has not previously been bound with `uv_udp_bind`
- * or `uv_udp_bind6`, it is bound to 0.0.0.0 (the "all interfaces" address)
- * and a random port number.
- *
- * Arguments:
- *  req       UDP request handle. Need not be initialized.
- *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
- *  bufs      List of buffers to send.
- *  bufcnt    Number of buffers in `bufs`.
- *  addr      Address of the remote peer. See `uv_ip4_addr`.
- *  send_cb   Callback to invoke when the data has been sent out.
- *
- * Returns:
- *  0 on success, -1 on error.
- */
-/*
-int uv_udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr_in addr, uv_udp_send_cb send_cb);
-*/
-
-/*
- * Send data. If the socket has not previously been bound with `uv_udp_bind6`,
- * it is bound to ::0 (the "all interfaces" address) and a random port number.
- *
- * Arguments:
- *  req       UDP request handle. Need not be initialized.
- *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
- *  bufs      List of buffers to send.
- *  bufcnt    Number of buffers in `bufs`.
- *  addr      Address of the remote peer. See `uv_ip6_addr`.
- *  send_cb   Callback to invoke when the data has been sent out.
- *
- * Returns:
- *  0 on success, -1 on error.
- */
-/*
-int uv_udp_send6(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
-    int bufcnt, struct sockaddr_in6 addr, uv_udp_send_cb send_cb);
-*/
-
-/*
- * Receive data. If the socket has not previously been bound with `uv_udp_bind`
- * or `uv_udp_bind6`, it is bound to 0.0.0.0 (the "all interfaces" address)
- * and a random port number.
- *
- * Arguments:
- *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
- *  alloc_cb  Callback to invoke when temporary storage is needed.
- *  recv_cb   Callback to invoke with received data.
- *
- * Returns:
- *  0 on success, -1 on error.
- */
-int uv_udp_recv_start(uv_udp_t* handle, uv_alloc_cb alloc_cb,
-    uv_readfrom_cb recv_cb);
-
-/*
- * Stop listening for incoming datagrams.
- *
- * Arguments:
- *  handle    UDP handle. Should have been initialized with `uv_udp_init`.
- *
- * Returns:
- *  0 on success, -1 on error.
- */
-int uv_udp_recv_stop(uv_udp_t* handle);
 
 
 /*
