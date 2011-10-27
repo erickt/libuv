@@ -57,8 +57,6 @@ static int uv__bind(uv_tcp_t* tcp,
     }
   }
 
-  assert(tcp->fd >= 0);
-
   tcp->delayed_error = 0;
   if (bind(tcp->fd, addr, addrsize) == -1) {
     if (errno == EADDRINUSE) {
