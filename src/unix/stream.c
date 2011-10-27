@@ -129,8 +129,13 @@ void uv__stream_destroy(uv_stream_t* stream) {
     ngx_queue_remove(q);
 
     req = ngx_queue_data(q, uv_write_t, queue);
-    if (req->bufs != req->bufsml)
+    if (req->addr) {
+      free(req->addr);
+    }
+
+    if (req->bufs != req->bufsml) {
       free(req->bufs);
+    }
 
     if (req->cb) {
       uv__set_artificial_error(req->handle->loop, UV_EINTR);
@@ -882,7 +887,10 @@ int uv__writeto(uv_write_t* req,
   req->send_handle = send_handle;
   req->handle = stream;
 
-  if (addr != NULL) {
+  if (addr == NULL) {
+    req->addr = NULL;
+  } else {
+    req->addr = (struct sockaddr*)malloc(addrlen);
     memcpy(&req->addr, addr, addrlen);
   }
 

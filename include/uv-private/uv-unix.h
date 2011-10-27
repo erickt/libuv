@@ -60,7 +60,7 @@ typedef int uv_file;
 #define UV_WRITE_PRIVATE_FIELDS \
   ngx_queue_t queue; \
   int write_index; \
-  struct sockaddr_storage addr; \
+  struct sockaddr* addr; \
   socklen_t addrlen; \
   uv_buf_t* bufs; \
   int bufcnt; \
