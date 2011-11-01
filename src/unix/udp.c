@@ -42,10 +42,10 @@ static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
 static void uv__udp_watcher_start(uv_udp_t* handle, ev_io* w) {
   int flags;
 
-  assert(w == &handle->read_watcher
-      || w == &handle->write_watcher);
+  assert(w == &handle->io.read_watcher
+      || w == &handle->io.write_watcher);
 
-  flags = (w == &handle->read_watcher ? EV_READ : EV_WRITE);
+  flags = (w == &handle->io.read_watcher ? EV_READ : EV_WRITE);
 
   w->data = handle;
   ev_set_cb(w, uv__udp_io);
@@ -57,10 +57,10 @@ static void uv__udp_watcher_start(uv_udp_t* handle, ev_io* w) {
 void uv__udp_watcher_stop(uv_udp_t* handle, ev_io* w) {
   int flags;
 
-  assert(w == &handle->read_watcher
-      || w == &handle->write_watcher);
+  assert(w == &handle->io.read_watcher
+      || w == &handle->io.write_watcher);
 
-  flags = (w == &handle->read_watcher ? EV_READ : EV_WRITE);
+  flags = (w == &handle->io.read_watcher ? EV_READ : EV_WRITE);
 
   ev_io_stop(handle->loop->ev, w);
   ev_io_set(w, -1, flags);
@@ -75,8 +75,8 @@ void uv__udp_destroy(uv_udp_t* handle) {
 
   uv__udp_run_completed(handle);
 
-  while (!ngx_queue_empty(&handle->write_queue)) {
-    q = ngx_queue_head(&handle->write_queue);
+  while (!ngx_queue_empty(&handle->io.write_queue)) {
+    q = ngx_queue_head(&handle->io.write_queue);
     ngx_queue_remove(q);
 
     req = ngx_queue_data(q, uv_udp_send_t, queue);
@@ -98,8 +98,8 @@ void uv__udp_destroy(uv_udp_t* handle) {
     handle->fd = -1;
   }
 
-  uv__udp_watcher_stop(handle, &handle->read_watcher);
-  uv__udp_watcher_stop(handle, &handle->write_watcher);
+  uv__udp_watcher_stop(handle, &handle->io.read_watcher);
+  uv__udp_watcher_stop(handle, &handle->io.write_watcher);
 }
 
 
@@ -109,8 +109,8 @@ static void uv__udp_run_pending(uv_udp_t* handle) {
   struct msghdr h;
   ssize_t size;
 
-  while (!ngx_queue_empty(&handle->write_queue)) {
-    q = ngx_queue_head(&handle->write_queue);
+  while (!ngx_queue_empty(&handle->io.write_queue)) {
+    q = ngx_queue_head(&handle->io.write_queue);
     assert(q != NULL);
 
     req = ngx_queue_data(q, uv_udp_send_t, queue);
@@ -154,7 +154,7 @@ static void uv__udp_run_pending(uv_udp_t* handle) {
      * off the write queue and onto the completed queue, done.
      */
     ngx_queue_remove(&req->queue);
-    ngx_queue_insert_tail(&handle->write_completed_queue, &req->queue);
+    ngx_queue_insert_tail(&handle->io.write_completed_queue, &req->queue);
   }
 }
 
@@ -163,8 +163,8 @@ static void uv__udp_run_completed(uv_udp_t* handle) {
   uv_udp_send_t* req;
   ngx_queue_t* q;
 
-  while (!ngx_queue_empty(&handle->write_completed_queue)) {
-    q = ngx_queue_head(&handle->write_completed_queue);
+  while (!ngx_queue_empty(&handle->io.write_completed_queue)) {
+    q = ngx_queue_head(&handle->io.write_completed_queue);
     assert(q != NULL);
 
     ngx_queue_remove(q);
@@ -250,8 +250,8 @@ static void uv__udp_recvmsg(uv_udp_t* handle) {
 
 
 static void uv__udp_sendmsg(uv_udp_t* handle) {
-  assert(!ngx_queue_empty(&handle->write_queue)
-      || !ngx_queue_empty(&handle->write_completed_queue));
+  assert(!ngx_queue_empty(&handle->io.write_queue)
+      || !ngx_queue_empty(&handle->io.write_completed_queue));
 
   /* Write out pending data first. */
   uv__udp_run_pending(handle);
@@ -259,13 +259,13 @@ static void uv__udp_sendmsg(uv_udp_t* handle) {
   /* Drain 'request completed' queue. */
   uv__udp_run_completed(handle);
 
-  if (!ngx_queue_empty(&handle->write_completed_queue)) {
+  if (!ngx_queue_empty(&handle->io.write_completed_queue)) {
     /* Schedule completion callbacks. */
-    ev_feed_event(handle->loop->ev, &handle->write_watcher, EV_WRITE);
+    ev_feed_event(handle->loop->ev, &handle->io.write_watcher, EV_WRITE);
   }
-  else if (ngx_queue_empty(&handle->write_queue)) {
+  else if (ngx_queue_empty(&handle->io.write_queue)) {
     /* Pending queue and completion queue empty, stop watcher. */
-    uv__udp_watcher_stop(handle, &handle->write_watcher);
+    uv__udp_watcher_stop(handle, &handle->io.write_watcher);
   }
 }
 
@@ -420,8 +420,8 @@ static int uv__udp_send(uv_udp_send_t* req,
   }
   memcpy(req->bufs, bufs, bufcnt * sizeof(bufs[0]));
 
-  ngx_queue_insert_tail(&handle->write_queue, &req->queue);
-  uv__udp_watcher_start(handle, &handle->write_watcher);
+  ngx_queue_insert_tail(&handle->io.write_queue, &req->queue);
+  uv__udp_watcher_start(handle, &handle->io.write_watcher);
 
   return 0;
 }
@@ -434,8 +434,8 @@ int uv_udp_init(uv_loop_t* loop, uv_udp_t* handle) {
   loop->counters.udp_init++;
 
   handle->fd = -1;
-  ngx_queue_init(&handle->write_queue);
-  ngx_queue_init(&handle->write_completed_queue);
+  ngx_queue_init(&handle->io.write_queue);
+  ngx_queue_init(&handle->io.write_completed_queue);
 
   return 0;
 }
@@ -566,7 +566,7 @@ int uv_udp_recv_start(uv_udp_t* handle,
     return -1;
   }
 
-  if (ev_is_active(&handle->read_watcher)) {
+  if (ev_is_active(&handle->io.read_watcher)) {
     uv__set_artificial_error(handle->loop, UV_EALREADY);
     return -1;
   }
@@ -576,14 +576,14 @@ int uv_udp_recv_start(uv_udp_t* handle,
 
   handle->alloc_cb = alloc_cb;
   handle->recv_cb = recv_cb;
-  uv__udp_watcher_start(handle, &handle->read_watcher);
+  uv__udp_watcher_start(handle, &handle->io.read_watcher);
 
   return 0;
 }
 
 
 int uv_udp_recv_stop(uv_udp_t* handle) {
-  uv__udp_watcher_stop(handle, &handle->read_watcher);
+  uv__udp_watcher_stop(handle, &handle->io.read_watcher);
   handle->alloc_cb = NULL;
   handle->recv_cb = NULL;
   return 0;

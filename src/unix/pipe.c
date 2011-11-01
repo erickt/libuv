@@ -136,8 +136,8 @@ int uv_pipe_listen(uv_pipe_t* handle, int backlog, uv_connection_cb cb) {
     uv__set_sys_error(handle->loop, errno);
   } else {
     handle->connection_cb = cb;
-    ev_io_init(&handle->read_watcher, uv__pipe_accept, handle->fd, EV_READ);
-    ev_io_start(handle->loop->ev, &handle->read_watcher);
+    ev_io_init(&handle->io.read_watcher, uv__pipe_accept, handle->fd, EV_READ);
+    ev_io_start(handle->loop->ev, &handle->io.read_watcher);
   }
 
 out:
@@ -216,8 +216,8 @@ int uv_pipe_connect(uv_connect_t* req,
 
   uv__stream_open((uv_stream_t*)handle, sockfd, UV_READABLE | UV_WRITABLE);
 
-  ev_io_start(handle->loop->ev, &handle->read_watcher);
-  ev_io_start(handle->loop->ev, &handle->write_watcher);
+  ev_io_start(handle->loop->ev, &handle->io.read_watcher);
+  ev_io_start(handle->loop->ev, &handle->io.write_watcher);
 
   status = 0;
 
@@ -230,8 +230,8 @@ out:
   ngx_queue_init(&req->queue);
 
   /* Run callback on next tick. */
-  ev_feed_event(handle->loop->ev, &handle->read_watcher, EV_CUSTOM);
-  assert(ev_is_pending(&handle->read_watcher));
+  ev_feed_event(handle->loop->ev, &handle->io.read_watcher, EV_CUSTOM);
+  assert(ev_is_pending(&handle->io.read_watcher));
 
   /* Mimic the Windows pipe implementation, always
    * return 0 and let the callback handle errors.
@@ -266,7 +266,7 @@ void uv__pipe_accept(EV_P_ ev_io* watcher, int revents) {
     pipe->connection_cb((uv_stream_t*)pipe, 0);
     if (pipe->accepted_fd == sockfd) {
       /* The user hasn't yet accepted called uv_accept() */
-      ev_io_stop(pipe->loop->ev, &pipe->read_watcher);
+      ev_io_stop(pipe->loop->ev, &pipe->io.read_watcher);
     }
   }
 

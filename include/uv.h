@@ -157,6 +157,7 @@ typedef struct uv_loop_s uv_loop_t;
 typedef struct uv_ares_task_s uv_ares_task_t;
 typedef struct uv_err_s uv_err_t;
 typedef struct uv_handle_s uv_handle_t;
+typedef struct uv_io_s uv_io_t;
 typedef struct uv_stream_s uv_stream_t;
 typedef struct uv_tcp_s uv_tcp_t;
 typedef struct uv_udp_s uv_udp_t;
@@ -363,12 +364,18 @@ UV_EXTERN void uv_close(uv_handle_t* handle, uv_close_cb close_cb);
 UV_EXTERN uv_buf_t uv_buf_init(char* base, size_t len);
 
 
+struct uv_io_s {
+  /* number of bytes queued for writing */
+  size_t write_queue_size;
+  UV_IO_PRIVATE_FIELDS
+};
+
+
 #define UV_STREAM_FIELDS \
-  /* number of bytes queued for writing */ \
-  size_t write_queue_size; \
   uv_alloc_cb alloc_cb; \
   uv_read_cb read_cb; \
   uv_read2_cb read2_cb; \
+  uv_io_t io; \
   /* private */ \
   UV_STREAM_PRIVATE_FIELDS
 
@@ -549,6 +556,7 @@ typedef void (*uv_udp_recv_cb)(uv_udp_t* handle, ssize_t nread, uv_buf_t buf,
 struct uv_udp_s {
   UV_HANDLE_FIELDS
   UV_UDP_PRIVATE_FIELDS
+  uv_io_t io;
 };
 
 /* uv_udp_send_t is a subclass of uv_req_t */

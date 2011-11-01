@@ -94,13 +94,16 @@ typedef void* uv_lib_t;
   ev_idle next_watcher;
 
 
-#define UV_STREAM_PRIVATE_FIELDS \
-  uv_connect_t *connect_req; \
-  uv_shutdown_t *shutdown_req; \
+#define UV_IO_PRIVATE_FIELDS \
   ev_io read_watcher; \
   ev_io write_watcher; \
   ngx_queue_t write_queue; \
-  ngx_queue_t write_completed_queue; \
+  ngx_queue_t write_completed_queue;
+
+
+#define UV_STREAM_PRIVATE_FIELDS \
+  uv_connect_t *connect_req; \
+  uv_shutdown_t *shutdown_req; \
   int delayed_error; \
   uv_connection_cb connection_cb; \
   int accepted_fd; \
@@ -112,13 +115,9 @@ typedef void* uv_lib_t;
 
 
 /* UV_UDP */
-#define UV_UDP_PRIVATE_FIELDS         \
-  uv_alloc_cb alloc_cb;               \
-  uv_udp_recv_cb recv_cb;             \
-  ev_io read_watcher;                 \
-  ev_io write_watcher;                \
-  ngx_queue_t write_queue;            \
-  ngx_queue_t write_completed_queue;  \
+#define UV_UDP_PRIVATE_FIELDS \
+  uv_alloc_cb alloc_cb; \
+  uv_udp_recv_cb recv_cb;
 
 
 /* UV_NAMED_PIPE */
