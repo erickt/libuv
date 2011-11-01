@@ -45,6 +45,10 @@ void uv__udp_destroy(uv_udp_t* handle) {
 
   uv__udp_run_completed(handle);
 
+  uv__io_destroy(&handle->io);
+
+
+
   while (!ngx_queue_empty(&handle->io.write_queue)) {
     q = ngx_queue_head(&handle->io.write_queue);
     ngx_queue_remove(q);

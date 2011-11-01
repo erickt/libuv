@@ -93,12 +93,13 @@ typedef void* uv_lib_t;
   int flags; \
   ev_idle next_watcher;
 
-
 #define UV_IO_PRIVATE_FIELDS \
   ev_io read_watcher; \
   ev_io write_watcher; \
   ngx_queue_t write_queue; \
-  ngx_queue_t write_completed_queue;
+  ngx_queue_t write_completed_queue; \
+  uv_io_write_cb write_completed_cb; \
+  uv_io_write_cb write_destroy_cb;
 
 
 #define UV_STREAM_PRIVATE_FIELDS \

@@ -36,6 +36,31 @@ static void uv__stream_connect(uv_stream_t*);
 static void uv__write(uv_stream_t* stream);
 static void uv__read(uv_stream_t* stream);
 
+static void uv__stream_io_write_destroy_cb(uv_handle_t* handle, ngx_queue_t* q) {
+  uv_write_t* req;
+
+  req = ngx_queue_data(q, uv_write_t, queue);
+  if (req->bufs != req->bufsml) {
+    free(req->bufs);
+  }
+
+  /* Let the callback know. */
+  if (req->cb) {
+    uv__set_artificial_error(req->handle->loop, UV_EINTR);
+    req->cb(req, -1);
+  }
+}
+
+static void uv__stream_io_write_completed_cb(uv_handle_t* handle, ngx_queue_t* q) {
+  uv_write_t* req;
+
+  req = ngx_queue_data(q, uv_write_t, queue);
+  if (req->cb) {
+    uv__set_artificial_error(handle->loop, req->error);
+    req->cb(req, req->error ? -1 : 0);
+  }
+}
+
 
 static size_t uv__buf_count(uv_buf_t bufs[], int bufcnt) {
   size_t total = 0;
@@ -71,6 +96,11 @@ void uv__stream_init(uv_loop_t* loop,
 
   ev_init(&stream->io.write_watcher, uv__stream_io);
   stream->io.write_watcher.data = stream;
+
+  uv__io_init(
+      &stream->io,
+      uv__stream_io_write_completed_cb,
+      uv__stream_io_write_destroy_cb);
 
   assert(ngx_queue_empty(&stream->io.write_queue));
   assert(ngx_queue_empty(&stream->io.write_completed_queue));
@@ -122,32 +152,10 @@ void uv__stream_destroy(uv_stream_t* stream) {
   uv_write_t* req;
   ngx_queue_t* q;
 
+  /* Only destroy the IO if we've been closed. */
   assert(stream->flags & UV_CLOSED);
 
-  while (!ngx_queue_empty(&stream->io.write_queue)) {
-    q = ngx_queue_head(&stream->io.write_queue);
-    ngx_queue_remove(q);
-
-    req = ngx_queue_data(q, uv_write_t, queue);
-    if (req->bufs != req->bufsml)
-      free(req->bufs);
-
-    if (req->cb) {
-      uv__set_artificial_error(req->handle->loop, UV_EINTR);
-      req->cb(req, -1);
-    }
-  }
-
-  while (!ngx_queue_empty(&stream->io.write_completed_queue)) {
-    q = ngx_queue_head(&stream->io.write_completed_queue);
-    ngx_queue_remove(q);
-
-    req = ngx_queue_data(q, uv_write_t, queue);
-    if (req->cb) {
-      uv__set_artificial_error(stream->loop, req->error);
-      req->cb(req, req->error ? -1 : 0);
-    }
-  }
+  uv__io_destroy(&stream->io);
 }
 
 

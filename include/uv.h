@@ -252,6 +252,7 @@ typedef void (*uv_exit_cb)(uv_process_t*, int exit_status, int term_signal);
 typedef void (*uv_fs_cb)(uv_fs_t* req);
 typedef void (*uv_work_cb)(uv_work_t* req);
 typedef void (*uv_after_work_cb)(uv_work_t* req);
+typedef void (*uv_io_write_cb)(uv_handle_t* handle, ngx_queue_t* node);
 
 /*
 * This will be called repeatedly after the uv_fs_event_t is initialized.

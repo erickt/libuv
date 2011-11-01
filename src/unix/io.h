@@ -2,6 +2,11 @@
 
 typedef void (*uv_io_cb)(EV_P_ ev_io* watcher, int revents);
 
+void uv__io_init(
+    uv_io_t* io,
+    uv_io_write_cb write_completed_cb,
+    uv_io_write_cb write_destroy_cb);
+
 void uv__io_watcher_start(
     uv_handle_t* handle,
     uv_io_t* io,
