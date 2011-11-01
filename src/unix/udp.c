@@ -21,6 +21,7 @@
 
 #include "uv.h"
 #include "internal.h"
+#include "io.h"
 
 #include <assert.h>
 #include <string.h>
@@ -28,7 +29,7 @@
 #include <stdlib.h>
 
 
-static void uv__udp_watcher_start(uv_udp_t* handle, ev_io* w);
+static void uv__udp_watcher_start(uv_udp_t* handle, int flags);
 static void uv__udp_run_completed(uv_udp_t* handle);
 static void uv__udp_run_pending(uv_udp_t* handle);
 static void uv__udp_recvmsg(uv_udp_t* handle);
@@ -39,20 +40,13 @@ static int uv__udp_send(uv_udp_send_t* req, uv_udp_t* handle, uv_buf_t bufs[],
     int bufcnt, struct sockaddr* addr, socklen_t addrlen, uv_udp_send_cb send_cb);
 
 
-static void uv__udp_watcher_start(uv_udp_t* handle, ev_io* w) {
-  int flags;
-
-  assert(w == &handle->io.read_watcher
-      || w == &handle->io.write_watcher);
-
-  flags = (w == &handle->io.read_watcher ? EV_READ : EV_WRITE);
-
-  w->data = handle;
-  ev_set_cb(w, uv__udp_io);
-  ev_io_set(w, handle->fd, flags);
-  ev_io_start(handle->loop->ev, w);
+static void uv__udp_watcher_start(uv_udp_t* handle, int flags) {
+  uv_io_watcher_start(
+      handle,
+      &handle->io,
+      flags,
+      uv__udp_io);
 }
-
 
 void uv__udp_watcher_stop(uv_udp_t* handle, ev_io* w) {
   int flags;
@@ -421,7 +415,7 @@ static int uv__udp_send(uv_udp_send_t* req,
   memcpy(req->bufs, bufs, bufcnt * sizeof(bufs[0]));
 
   ngx_queue_insert_tail(&handle->io.write_queue, &req->queue);
-  uv__udp_watcher_start(handle, &handle->io.write_watcher);
+  uv__udp_watcher_start(handle, EV_WRITE);
 
   return 0;
 }
@@ -576,7 +570,7 @@ int uv_udp_recv_start(uv_udp_t* handle,
 
   handle->alloc_cb = alloc_cb;
   handle->recv_cb = recv_cb;
-  uv__udp_watcher_start(handle, &handle->io.read_watcher);
+  uv__udp_watcher_start(handle, EV_READ);
 
   return 0;
 }

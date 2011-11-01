@@ -174,6 +174,8 @@
             'include/uv-private/ngx-queue.h',
             'include/uv-private/uv-unix.h',
             'src/unix/core.c',
+            'src/unix/io.c',
+            'src/unix/io.h',
             'src/unix/uv-eio.c',
             'src/unix/uv-eio.h',
             'src/unix/fs.c',
