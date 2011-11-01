@@ -2,18 +2,15 @@
 
 #include <assert.h>
 
-static void uv__io_watcher_start(
+void uv__io_watcher_start(
     uv_handle_t* handle,
     uv_io_t* io,
-    uv_io_cb cb,
-    int flags) {
-  ev_io* w;
+    ev_io* w,
+    uv_io_cb cb) {
+  int flags;
 
-  switch(flags) {
-    case EV_READ: w = &io->read_watcher; break;
-    case EV_WRITE: w = &io->write_watcher; break;
-    default: assert(0);
-  }
+  assert(w == &io->read_watcher || w == &io->write_watcher);
+  flags = (w == &io->read_watcher ? EV_READ : EV_WRITE);
 
   w->data = handle;
   ev_set_cb(w, cb);
@@ -21,12 +18,17 @@ static void uv__io_watcher_start(
   ev_io_start(handle->loop->ev, w);
 }
 
-void uv__io_watcher_start_read(uv_handle_t* handle, uv_io_t* io, uv_io_cb cb) {
-  uv_io_watcher_start(handle, io, cb, EV_READ);
-}
 
-void uv__io_watcher_start_write(uv_handle_t* handle, uv_io_t* io, uv_io_cb cb) {
-  uv_io_watcher_start(handle, io, cb, EV_WRITE);
+void uv__io_watcher_stop(uv_handle_t* handle, uv_io_t* io, ev_io* w) {
+  int flags;
+
+  assert(w == &io->read_watcher || w == &io->write_watcher);
+  flags = (w == &io->read_watcher ? EV_READ : EV_WRITE);
+
+  ev_io_stop(handle->loop->ev, w);
+  ev_io_set(w, -1, flags);
+  ev_set_cb(w, NULL);
+  w->data = (void*)0xDEADBABE;
 }
 
 #if 0

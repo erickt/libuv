@@ -20,6 +20,7 @@
 
 #include "uv.h"
 #include "unix/internal.h"
+#include "unix/io.h"
 
 #include <stddef.h> /* NULL */
 #include <stdio.h> /* printf */
@@ -104,8 +105,8 @@ void uv_close(uv_handle_t* handle, uv_close_cb close_cb) {
 
     case UV_UDP:
       udp = (uv_udp_t*)handle;
-      uv__udp_watcher_stop(udp, &udp->io.read_watcher);
-      uv__udp_watcher_stop(udp, &udp->io.write_watcher);
+      uv__io_watcher_stop(handle, &udp->io, &udp->io.read_watcher);
+      uv__io_watcher_stop(handle, &udp->io, &udp->io.write_watcher);
       uv__close(udp->fd);
       udp->fd = -1;
       break;
